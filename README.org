@@ -31,6 +31,23 @@ Algorytmy porównano na przykładowym zbiorze danych opisanym w następnym rozdz
   \clearpage
 #+end_export
 
+* Informacje o sprzęcie na którym wykonano pomiar
+\noindent
+Model sprzętu:
+    - Dell XPS 15 9570
+
+\noindent
+Procesor:
+    - 12 x Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz, 3933 MHz
+
+\noindent
+Karta graficzna:
+    - nVidia GP107M [GeForce GTX 1050 Ti Mobile]
+    - Intel UHD Graphics 630 (Mobile)
+
+#+begin_export latex
+  \clearpage
+#+end_export
 * Opis zbióru danych
 \noindent
 Dane pochodzą z archiwum [[https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation][uci]]. Zawierają próbki kolorów G, R, B z wycinków obrazków twarzy ludzi w tym:
