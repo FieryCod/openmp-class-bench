@@ -1,0 +1,113 @@
+#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMP
+#+AUTHOR:  Karol Wójcik, Filip Krzysiek
+#+DATE: 2020-10-14, Wtorek
+#+LANGUAGE: pl
+#+LATEX_HEADER: \usepackage[AUTO]{babel}
+#+OPTIONS: toc:nil
+
+#+begin_export latex
+  \clearpage \tableofcontents \clearpage
+#+end_export
+
+* Wprowadzenie
+Celem projektu jest implementacja popularnych algorytmów do przetwarzania danych, a także wykonanie i opis pomiaru czasowago wariantów algorytmów bez/z zrównolegleniem operując na środowisku OpenMP. \\
+
+\noindent
+W projekcie za wariant *A* uznaje się wersję algorytmu bez zrównoleglenia, podczas gdy wariant *B* odpowiada ze wersję algorytmu zrównoleglonego.
+
+\noindent
+Pomiary zamieszczone w dokumencie zostały wykonane na podstawie uśrednienia czasu realizacji trzydziestu obiegów programu.
+
+\noindent
+W ramach projektu zaimplementowano następujące algorytmy:
+- algorytm standaryzacji min-max
+- algorytm standaryzacji rozkładem normalnym
+- algorytm najbliższych sąsiadów (KNN)
+
+\noindent
+Algorytmy porównano na przykładowym zbiorze danych opisanym w następnym rozdziale.
+
+#+begin_export latex
+  \clearpage
+#+end_export
+
+* Opis zbióru danych
+\noindent
+Dane pochodzą z archiwum [[https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation][uci]]. Zawierają próbki kolorów G, R, B z wycinków obrazków twarzy ludzi w tym:
+  - starych
+  - młodych
+  - w średnim wieku
+  - o różnej rasie i kolorze skóry
+
+\noindent
+Sumaryczna liczba próbek wynosi 245057 z czego tylko 50859 próbek zawiera w sobie kolory twarzy. W danych istnieją też wycinki z różnych obrazków nie przedstawiających ludzi. \\
+
+\noindent
+Oryginalnie kolumna ostatnia zawierająca informację o przynależności kolorów G, R, B do twarzy miała następującą postać: \\
+
+\noindent
+*SKIN*:
+- ~1~ - twarz
+- ~2~ - nie twarz
+
+\noindent
+Dane zostały poddane wstępnej obróbce:
+1. Zamieniono kolumny tak, by odpowiadała kolejność R, G, B
+2. Zamieniono oznaczenie *SKIN* na:
+   - ~0~ - nie twarz
+   - ~1~ - twarz
+#+begin_export latex
+\clearpage
+#+end_export
+* Implementacja
+** Standaryzacja Min-Max
+Klasa ~MinMax~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces standaryzacji wartości w danej kolumnie do przedziału ~[0, 1]~. \\
+
+\noindent
+Standaryzacja ~min-max~ jest opisana wzorem
+#+begin_export latex
+\begin{equation}
+f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
+\end{equation}
+#+end_export
+
+*** Pomiar A
+#+BEGIN_SRC sh :results output :exports results :eval yes
+  make run_min_max_no_omp_bench
+#+end_src
+*** Pomiar B
+#+BEGIN_SRC sh :results output :exports results :eval yes
+  make run_min_max_bench
+#+end_src
+
+#+begin_export latex
+\clearpage
+#+end_export
+** Standaryzacja rozkładem normalnym
+Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces standaryzacji wartości w danej kolumnie do rozkładu normalnego ~N(0,1)~.
+Średnia wartość oczekiwana jest równa 0, a odchylenie standardowe wynosi 1. \\
+
+#+begin_export latex
+\begin{equation}
+\[Z = \frac{X-m}{\sigma} \sim N(0,1)\]
+\end{equation}
+#+end_export
+
+*** Pomiar A
+#+BEGIN_SRC sh :results output :exports results :eval yes
+  make run_standard_scaler_no_omp_bench
+#+end_src
+*** Pomiar B
+#+BEGIN_SRC sh :results output :exports results :eval yes
+  make run_standard_scaler_bench
+#+end_src
+
+#+begin_export latex
+\clearpage
+#+end_export
+* Wnioski
+\noindent
+Obserwując pomiary można zauważyć, iż wersja bez zastosowania ~OpenMP~ dla operacji cząstkowych budujących rozwiązanie końcowe jest około dwa razy wolniejsza od swojego zrównoleglonego odpowiednika. \\
+
+\noindent
+Przy tak małym zbiorze danych różnice jednak nie są znaczące. Zatem OpenMP jest jak najbardziej przydatne, ale tylko przy procesowaniu znaczącej ilości danych.
