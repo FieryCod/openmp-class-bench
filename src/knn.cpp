@@ -37,9 +37,8 @@ public:
                 doc.GetColumn<double>("SKIN")
         };
 
-
-
         vector <vector<double>> test, learn;
+
         for (int i = 0; i < v[0].size(); ++i) {
             if(i < v[0].size() * 0.8){
                 learn.push_back({v[0][i], v[1][i], v[2][i], v[3][i]});
@@ -49,14 +48,14 @@ public:
         }
 
         int success = 0;
-#pragma omp parallel for default(shared)
+        #pragma omp parallel for default(shared)
         for (int i = 0; i < test.size(); ++i) {
             test[i].push_back(search(learn, test[i]));
             if(test[i][4] == test[i][3])
                 ++success;
         }
 
-        cout<<"Acuracy: " << (success * 100) / test.size() << "%" <<endl;
+        cout << "Accuracy: " << (success * 100) / test.size() << "%" <<endl;
 
         bencher->end_op(id);
         return test;
@@ -73,6 +72,7 @@ public:
         for (auto name : cnames) {
             out << name << ",";
         }
+
         out << "\n";
 
         for (int i = 0; i < ds.size(); ++i) {
@@ -119,13 +119,13 @@ private:
             }
         }
 
-#pragma omp parallel for default(shared)
+        #pragma omp parallel for default(shared)
         for(int i = maxElements ; i < learn.size(); ++i) {
             double temp = calculateDistance(test, learn[i]);
             bool flgFound = false;
             for(int j = 0; j < maxElements  && !flgFound; ++j){
                 if(nearestPoints[j][0] > temp) {
-#pragma omp critical(updateNearestPoints)
+                    #pragma omp critical(updateNearestPoints)
                     {
                         nearestPoints.insert(nearestPoints.begin() + j, vector<double>{temp, learn[i][3]});
                         nearestPoints.pop_back();
@@ -135,7 +135,7 @@ private:
             }
         }
         bencher->end_op(id);
-//        cout<<"K"<<endl;
+
         return (nearestPoints[0][1] + nearestPoints[1][1] + nearestPoints[2][1] + nearestPoints[3][1] + nearestPoints[4][1]) > 2;
     }
 };
@@ -144,15 +144,14 @@ int main(int argc, char *argv[]) {
     int expected_threads = stoi(string(argv[1]));
     string file_path = string(argv[2]);
     ifstream f(file_path.c_str());
+
     if(f.bad()) {
-        cout<<"File not found" <<endl;
         exit(1);
     }
 
     rapidcsv::Document doc(file_path);
 
     omp_set_num_threads(expected_threads);
-    cout<<expected_threads<<endl;
 
     bool with_bench = false;
 

@@ -50,20 +50,20 @@ knn: src/knn.cpp
 	g++ -fopenmp src/knn.cpp -o knn
 
 run_knn: knn
-	@./knn 4 "resources/skin.csv"
+	@./knn 4 "resources/skin1.csv"
 	@rm -Rf knn
 
 run_knn_bench: knn
-	@./knn 4 "resources/skin.csv" 1
+	@./knn 4 "resources/skin1.csv" 1
 	@rm -Rf knn
 
 knn_no_omp: src/knn.cpp
 	g++ src/knn.cpp -o knn_no_omp
 
 run_knn_no_omp: knn_no_omp
-	@./knn_no_omp 4 "resources/skin.csv" 1
+	@./knn_no_omp 4 "resources/skin1.csv" 1
 	@rm -Rf knn_no_omp
 
 run_knn_no_omp_bench: knn_no_omp
-	@./knn_no_omp 4 "resources/skin.csv" 1
+	@./knn_no_omp 4 "resources/skin1.csv" 1
 	@rm -Rf knn_no_omp

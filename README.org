@@ -1,5 +1,5 @@
 #+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMP
-#+AUTHOR:  Karol Wójcik, Filip Krzysiek
+#+AUTHOR:  Karol Wójcik, Filip Swałdek
 #+DATE: 2020-10-14, Wtorek
 #+LANGUAGE: pl
 #+LATEX_HEADER: \usepackage[AUTO]{babel}
@@ -170,12 +170,34 @@ python3 standard_scaler.py
 #+begin_export latex
 \clearpage
 #+end_export
-
 ** Klasyfikacja najblizszymi sąsiadami
-Klasa ~Knn~ zdefiniowana w pliku ~src/Mknn.cpp~ realizuje proces klasyfikacji przy użyciu algorytmu najblizszych sąsiadów.
-Podzielono dane na dwa zbiory, testowy (20%) i trenujacy (80%), a do klasyfikacji używanych jest 5 sąsiadów, przy użyciu metryki euklidesowej. \\
+Klasa ~Knn~ zdefiniowana w pliku ~src/knn.cpp~ realizuje proces klasyfikacji przy użyciu algorytmu najbliższych sąsiadów. Dane na dwa zbiory, testowy (20%) i trenujący (80%), a do klasyfikacji używanych jest 5 sąsiadów, przy użyciu metryki euklidesowej. \\
 
+\noindent
+(Li)czba rekordów została zmniejszona do 30000.
 
+#+begin_export latex
+d(x) = \sqrt{\sum\limits_{i=1}^n(x_{iA}-x_{iB})^2} =\text{Odległość Euklidesowa}
+#+end_export latex
+
+*** Pomiar A
+#+BEGIN_SRC sh :results output :exports results :eval yes
+  make run_knn_no_omp_bench
+#+end_src
+
+*** Pomiar B
+#+BEGIN_SRC sh :results output :exports results :eval yes
+  make run_knn_bench
+#+end_src
+
+*** Pomiar C
+#+BEGIN_SRC sh :results output :exports results :eval yes
+python3 knn.py
+#+end_src
+
+#+begin_export latex
+\clearpage
+#+end_export
 * Wnioski
 \noindent
 Obserwując pomiary można zauważyć, iż wersja bez zastosowania ~OpenMP~ dla operacji cząstkowych budujących rozwiązanie końcowe jest około dwa razy wolniejsza od swojego zrównoleglonego odpowiednika. \\

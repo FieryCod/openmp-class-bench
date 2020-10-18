@@ -3,7 +3,7 @@ from sklearn.metrics import accuracy_score
 import time
 import pandas as pd
 
-file_path = "resources/skin.csv"
+file_path = "resources/skin1.csv"
 
 start = time.time()
 df_raw = pd.read_csv(file_path, delimiter=',')
