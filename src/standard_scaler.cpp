@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#ifndef omp_set_num_threads
+#ifndef _OPENMP
 
 void omp_set_num_threads(int _x) {}
 

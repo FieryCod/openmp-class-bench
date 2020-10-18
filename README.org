@@ -94,17 +94,33 @@ f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
 #+BEGIN_SRC sh :results output :exports results :eval yes
   make run_min_max_no_omp_bench
 #+end_src
+
+#+RESULTS:
+: g++ src/min_max.cpp -o min_max_no_omp
+:
+: Mean exec time for benches of op: 'DS->MinMaxDS' 180.7 ms
+: Mean exec time for benches of op: 'MAX op' 2.14444 ms
+: Mean exec time for benches of op: 'MIN op' 2.17778 ms
+
 *** Pomiar B
 #+BEGIN_SRC sh :results output :exports results :eval yes
   make run_min_max_bench
 #+end_src
+
+#+RESULTS:
+: g++ -fopenmp src/min_max.cpp -o min_max
+:
+: Mean exec time for benches of op: 'DS->MinMaxDS' 163.3 ms
+: Mean exec time for benches of op: 'MAX op' 0.922222 ms
+: Mean exec time for benches of op: 'MIN op' 0.866667 ms
+
 *** Pomiar C
 #+BEGIN_SRC sh :results output :exports results :eval yes
 python3 min_max.py
 #+end_src
 
 #+RESULTS:
-: Mean of elapsed time for 30 execs took 76.4084928668429 ms
+: Mean of elapsed time for 30 execs took 77.21493699991697 ms
 
 #+begin_export latex
 \clearpage
@@ -123,10 +139,26 @@ Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces st
 #+BEGIN_SRC sh :results output :exports results :eval yes
   make run_standard_scaler_no_omp_bench
 #+end_src
+
+#+RESULTS:
+: g++ src/standard_scaler.cpp -o standard_scaler_no_omp
+:
+: Mean exec time for benches of op: 'DS->StandardScalerDS' 196.967 ms
+: Mean exec time for benches of op: 'MEAN op' 2.2 ms
+: Mean exec time for benches of op: 'STD op' 7.07778 ms
+
 *** Pomiar B
 #+BEGIN_SRC sh :results output :exports results :eval yes
   make run_standard_scaler_bench
 #+end_src
+
+#+RESULTS:
+: g++ -fopenmp src/standard_scaler.cpp -o standard_scaler
+:
+: Mean exec time for benches of op: 'DS->StandardScalerDS' 159.567 ms
+: Mean exec time for benches of op: 'MEAN op' 2.37778 ms
+: Mean exec time for benches of op: 'STD op' 0.833333 ms
+
 *** Pomiar C
 #+BEGIN_SRC sh :results output :exports results :eval yes
 python3 standard_scaler.py
@@ -139,9 +171,17 @@ python3 standard_scaler.py
 \clearpage
 #+end_export
 
+** Klasyfikacja najblizszymi sąsiadami
+Klasa ~Knn~ zdefiniowana w pliku ~src/Mknn.cpp~ realizuje proces klasyfikacji przy użyciu algorytmu najblizszych sąsiadów.
+Podzielono dane na dwa zbiory, testowy (20%) i trenujacy (80%), a do klasyfikacji używanych jest 5 sąsiadów, przy użyciu metryki euklidesowej. \\
+
+
 * Wnioski
 \noindent
 Obserwując pomiary można zauważyć, iż wersja bez zastosowania ~OpenMP~ dla operacji cząstkowych budujących rozwiązanie końcowe jest około dwa razy wolniejsza od swojego zrównoleglonego odpowiednika. \\
 
 \noindent
 Przy tak małym zbiorze danych różnice jednak nie są znaczące. Zatem OpenMP jest jak najbardziej przydatne, ale tylko przy procesowaniu znaczącej ilości danych.
+
+\noindent
+*Wersje Pythonowe są 2 razy szybsze z oczywistych względów* \\
