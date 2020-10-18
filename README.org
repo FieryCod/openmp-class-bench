@@ -16,6 +16,9 @@ Celem projektu jest implementacja popularnych algorytmów do przetwarzania danyc
 W projekcie za wariant *A* uznaje się wersję algorytmu bez zrównoleglenia, podczas gdy wariant *B* odpowiada ze wersję algorytmu zrównoleglonego.
 
 \noindent
+Warianty *A* i *B* zostały porównane do ich alternatywnej implementacji napisanej w Pythonie (Wariant) *C*
+
+\noindent
 Pomiary zamieszczone w dokumencie zostały wykonane na podstawie uśrednienia czasu realizacji trzydziestu obiegów programu.
 
 \noindent
@@ -30,7 +33,6 @@ Algorytmy porównano na przykładowym zbiorze danych opisanym w następnym rozdz
 #+begin_export latex
   \clearpage
 #+end_export
-
 * Informacje o sprzęcie na którym wykonano pomiar
 \noindent
 Model sprzętu:
@@ -96,6 +98,13 @@ f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
 #+BEGIN_SRC sh :results output :exports results :eval yes
   make run_min_max_bench
 #+end_src
+*** Pomiar C
+#+BEGIN_SRC sh :results output :exports results :eval yes
+python3 min_max.py
+#+end_src
+
+#+RESULTS:
+: Mean of elapsed time for 30 execs took 76.4084928668429 ms
 
 #+begin_export latex
 \clearpage
@@ -118,10 +127,18 @@ Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces st
 #+BEGIN_SRC sh :results output :exports results :eval yes
   make run_standard_scaler_bench
 #+end_src
+*** Pomiar C
+#+BEGIN_SRC sh :results output :exports results :eval yes
+python3 standard_scaler.py
+#+end_src
+
+#+RESULTS:
+: Mean of elapsed time for 30 execs took 83.95475529996475 ms
 
 #+begin_export latex
 \clearpage
 #+end_export
+
 * Wnioski
 \noindent
 Obserwując pomiary można zauważyć, iż wersja bez zastosowania ~OpenMP~ dla operacji cząstkowych budujących rozwiązanie końcowe jest około dwa razy wolniejsza od swojego zrównoleglonego odpowiednika. \\

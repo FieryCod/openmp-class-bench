@@ -4,3 +4,6 @@ min_max
 min_max_no_op
 standard_scaler-skin.csv
 min_max-skin.csv
+__pycache__
+min_max-skin-py.csv
+standard_scaler-skin-py.csv
