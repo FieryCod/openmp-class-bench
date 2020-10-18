@@ -1,5 +1,5 @@
 #+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMP
-#+AUTHOR:  Karol Wójcik, Filip Swałdek
+#+AUTHOR:  Karol Wójcik, Krzysztof Swałdek
 #+DATE: 2020-10-14, Wtorek
 #+LANGUAGE: pl
 #+LATEX_HEADER: \usepackage[AUTO]{babel}
@@ -91,7 +91,7 @@ f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
 #+end_export
 
 *** Pomiar A
-#+BEGIN_SRC sh :results output :exports results :eval yes
+#+BEGIN_SRC sh :results output :exports results :eval no
   make run_min_max_no_omp_bench
 #+end_src
 
@@ -103,7 +103,7 @@ f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
 : Mean exec time for benches of op: 'MIN op' 2.17778 ms
 
 *** Pomiar B
-#+BEGIN_SRC sh :results output :exports results :eval yes
+#+BEGIN_SRC sh :results output :exports results :eval no
   make run_min_max_bench
 #+end_src
 
@@ -115,7 +115,7 @@ f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
 : Mean exec time for benches of op: 'MIN op' 0.866667 ms
 
 *** Pomiar C
-#+BEGIN_SRC sh :results output :exports results :eval yes
+#+BEGIN_SRC sh :results output :exports results :eval no
 python3 min_max.py
 #+end_src
 
@@ -136,7 +136,7 @@ Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces st
 #+end_export
 
 *** Pomiar A
-#+BEGIN_SRC sh :results output :exports results :eval yes
+#+BEGIN_SRC sh :results output :exports results :eval no
   make run_standard_scaler_no_omp_bench
 #+end_src
 
@@ -148,7 +148,7 @@ Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces st
 : Mean exec time for benches of op: 'STD op' 7.07778 ms
 
 *** Pomiar B
-#+BEGIN_SRC sh :results output :exports results :eval yes
+#+BEGIN_SRC sh :results output :exports results :eval no
   make run_standard_scaler_bench
 #+end_src
 
@@ -160,7 +160,7 @@ Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces st
 : Mean exec time for benches of op: 'STD op' 0.833333 ms
 
 *** Pomiar C
-#+BEGIN_SRC sh :results output :exports results :eval yes
+#+BEGIN_SRC sh :results output :exports results :eval no
 python3 standard_scaler.py
 #+end_src
 
@@ -174,26 +174,34 @@ python3 standard_scaler.py
 Klasa ~Knn~ zdefiniowana w pliku ~src/knn.cpp~ realizuje proces klasyfikacji przy użyciu algorytmu najbliższych sąsiadów. Dane na dwa zbiory, testowy (20%) i trenujący (80%), a do klasyfikacji używanych jest 5 sąsiadów, przy użyciu metryki euklidesowej. \\
 
 \noindent
-(Li)czba rekordów została zmniejszona do 30000.
+Liczba rekordów została zmniejszona do 5000.
 
 #+begin_export latex
+$$
 d(x) = \sqrt{\sum\limits_{i=1}^n(x_{iA}-x_{iB})^2} =\text{Odległość Euklidesowa}
-#+end_export latex
+$$
+#+end_export
 
 *** Pomiar A
-#+BEGIN_SRC sh :results output :exports results :eval yes
-  make run_knn_no_omp_bench
-#+end_src
+#+RESULTS:
+: g++ src/knn.cpp -o knn_no_omp
+:
+: Mean exec time for benches of op: 'DS->KnnDS' 2515.77 ms
+: Mean exec time for benches of op: 'KNN one record' 1.74281 ms
 
 *** Pomiar B
-#+BEGIN_SRC sh :results output :exports results :eval yes
-  make run_knn_bench
-#+end_src
+#+RESULTS:
+: g++ -fopenmp src/knn.cpp -o knn
+: Accuracy: 100%
+: Mean exec time: 'DS->KnnDS' 2489 ms
+: Mean exec time: 'KNN one record' 1.74274 ms
 
 *** Pomiar C
-#+BEGIN_SRC sh :results output :exports results :eval yes
-python3 knn.py
-#+end_src
+#+RESULTS:
+: g++ src/knn.cpp -o knn_no_omp
+:
+: Total time  0.11359834671020508
+: Accurancy  0.996996996996997
 
 #+begin_export latex
 \clearpage
@@ -203,7 +211,7 @@ python3 knn.py
 Obserwując pomiary można zauważyć, iż wersja bez zastosowania ~OpenMP~ dla operacji cząstkowych budujących rozwiązanie końcowe jest około dwa razy wolniejsza od swojego zrównoleglonego odpowiednika. \\
 
 \noindent
-Przy tak małym zbiorze danych różnice jednak nie są znaczące. Zatem OpenMP jest jak najbardziej przydatne, ale tylko przy procesowaniu znaczącej ilości danych.
+Przy tak małym zbiorze danych różnice jednak nie są znaczące. Zatem OpenMP jest jak najbardziej przydatne, ale tylko przy procesowaniu znaczącej ilości danych. \\
 
 \noindent
 *Wersje Pythonowe są 2 razy szybsze z oczywistych względów* \\

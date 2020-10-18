@@ -55,9 +55,8 @@ public:
                 ++success;
         }
 
-        cout << "Accuracy: " << (success * 100) / test.size() << "%" <<endl;
-
         bencher->end_op(id);
+
         return test;
     }
 
