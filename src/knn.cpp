@@ -86,12 +86,12 @@ public:
         MPI_Scatter(learnData.data(), COLUMN_PARTITION_SIZE, MPI_learn_row, LEARN_DATA_partition.data(),
                     COLUMN_PARTITION_SIZE, MPI_learn_row, 0, MPI_COMM_WORLD);
 
-        auto nearestPoint_M = move(process(learnData, nearestPoint, testData, neighbours));
+        auto nearestPoint_M = move(process(LEARN_DATA_partition, nearestPoint, testData, neighbours));
 
         MPI_Gather(nearestPoint_M.data(), neighbours, MPI_NEAREST_POINT, nearestPoint.data(), neighbours,
                    MPI_NEAREST_POINT, 0, MPI_COMM_WORLD);
 
-        return getGreatestValue(nearestPoint);;
+        return getGreatestValue(nearestPoint);
     }
 
     vector<array<double,2>> process(vector <array<double,4>> learnData, vector <array<double,2>> nearestPoint,
@@ -133,6 +133,14 @@ int main(int argc, char *argv[]) {
     string file_path = string(argv[1]);
 //TODO add parameter to chose neighbours
     int neighbours = 5;
+
+    ifstream f(file_path);
+    if (!f.good()) {
+        cout << "File not found" << endl;
+        exit(1);
+    }
+    f.close();
+
     rapidcsv::Document doc(file_path);
 
     vector<double> R = doc.GetColumn<double>("R");
@@ -177,12 +185,12 @@ int main(int argc, char *argv[]) {
             if(knn.testRecord(testRow, processes, neighbours) == testRow[3])
                 ++correct;
         }
-        cout<<"Accuracy: " << (float)correct / test.size() * 100.  << "%" << endl;
 
         //***************************************************************************************/
 
         if (pid == 0) {
             bencher->end_op(op_id);
+            cout<<"Accuracy: " << (float)correct / test.size() * 100.  << "%" << endl;
         }
     }
 
