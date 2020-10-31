@@ -123,12 +123,12 @@ f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
 #+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
 [[./resources/min_max2.png]]
 
-#+BEGIN_SRC python :results none :exports none :eval no
-python3 visualize.py min_max
+#+BEGIN_SRC sh :results none :exports none :eval no
+python visualize.py min_max
 #+end_src
 *** Pomiar B
 #+BEGIN_SRC sh :results output :exports results :eval no
-python3 min_max.py
+python min_max.py
 #+end_src
 
 #+RESULTS:
@@ -163,13 +163,12 @@ Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces st
 #+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
 [[./resources/standard_scaler2.png]]
 
-#+BEGIN_SRC python :results none :exports none :eval no
-python3 visualize.py standard_scaler
+#+BEGIN_SRC sh :results none :exports none :eval no
+  python visualize.py standard_scaler
 #+end_src
-
 *** Pomiar B
 #+BEGIN_SRC sh :results output :exports results :eval no
-python3 standard_scaler.py
+  python3 standard_scaler.py
 #+end_src
 
 #+RESULTS:
@@ -189,6 +188,20 @@ d(x) = \sqrt{\sum\limits_{i=1}^n(x_{iA}-x_{iB})^2} =\text{Odległość Euklideso
 #+end_export
 
 *** Pomiar A
+#+BEGIN_SRC sh :results none :exports none
+  make PROCESSES=1 run_knn && \
+  make PROCESSES=2 run_knn && \
+  make PROCESSES=3 run_knn && \
+  make PROCESSES=4 run_knn && \
+  make PROCESSES=5 run_knn && \
+  make PROCESSES=6 run_knn
+#+end_src
+
+#+BEGIN_SRC sh :results none :exports none
+  python visualize.py knn
+#+end_src
+
+*** Pomiar B
 #+BEGIN_SRC sh :results output :exports results :eval no
 python3 knn.py
 #+end_src
@@ -196,8 +209,6 @@ python3 knn.py
 #+RESULTS:
 : Total time  0.1289057731628418
 : Acurancy  0.996996996996997
-
-*** Pomiar B
 
 #+begin_export latex
 \clearpage
