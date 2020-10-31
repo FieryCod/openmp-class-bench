@@ -10,175 +10,193 @@
 
 using namespace std;
 
-#ifndef _OPENMP
-
-void omp_set_num_threads(int _x) {}
-
-#endif
-
 class Knn {
-public:
-    Knn(shared_ptr <Bench> bencher,
-        rapidcsv::Document doc,
-        vector <string> cvnames
-    ) {
-        this->bencher = bencher;
-        this->cvnames = cvnames;
-        this->doc = doc;
-    }
-
-    vector <vector<double>> process() {
-        int id = bencher->add_op("DS->KnnDS");
-
-        auto v = vector < vector < double >> {
-                doc.GetColumn<double>("R"),
-                doc.GetColumn<double>("G"),
-                doc.GetColumn<double>("B"),
-                doc.GetColumn<double>("SKIN")
-        };
-
-        vector <vector<double>> test, learn;
-
-        for (int i = 0; i < v[0].size(); ++i) {
-            if(i < v[0].size() * 0.8){
-                learn.push_back({v[0][i], v[1][i], v[2][i], v[3][i]});
-            } else {
-                test.push_back({v[0][i], v[1][i], v[2][i], v[3][i]});
-            }
-        }
-
-        int success = 0;
-        #pragma omp parallel for default(shared)
-        for (int i = 0; i < test.size(); ++i) {
-            test[i].push_back(search(learn, test[i]));
-            if(test[i][4] == test[i][3])
-                ++success;
-        }
-
-        bencher->end_op(id);
-
-        return test;
-    }
-
-    void spit_csv(
-            string filename,
-            vector <vector<double>> ds,
-            vector <string> cnames
-    ) {
-        ofstream out;
-        out.open(filename);
-
-        for (auto name : cnames) {
-            out << name << ",";
-        }
-
-        out << "\n";
-
-        for (int i = 0; i < ds.size(); ++i) {
-            for (int j = 0; j < cnames.size() + 1; ++j) {
-                out << ds[i][j] << ((j == cnames.size()) ? "\n" : ",");
-            }
-        }
-        out.close();
-    }
-
-    void process_all_and_spit_output() {
-        spit_csv("knn-skin.csv", process(), cvnames);
-    }
-
 private:
-    vector <string> cvnames;
-    rapidcsv::Document doc;
-    shared_ptr <Bench> bencher;
+    vector <array<double,4>> learnData;
 
-    double calculateDistance(vector<double> newPoint, vector<double> pointOuter) {
-        return sqrt(pow(newPoint[0] - pointOuter[0], 2) + pow(newPoint[1] - pointOuter[1], 2) + pow(newPoint[2] - pointOuter[2], 2));
+    struct nearestPointRow {
+        double distance;
+        double value;
+    };
+
+    double euqlidesDistance(vector<double> testPoint, array<double,4> learnPoint) {
+        double sum = 0;
+        for (int i = 0; i < testPoint.size() - 1; ++i) {
+            sum += pow(testPoint[i] - learnPoint[i], 2);
+        }
+        return sqrt(sum);
+    }
+    //TODO add other distance calculations
+
+    void
+    checkData(vector <array<double,2>> &nearestPoint, const double distance, const double value, const int neighbours) {
+        for (int i = 0; i < neighbours; ++i) {
+            if (nearestPoint[i].at(0) > distance) {
+                nearestPoint.insert(nearestPoint.begin() + i, {distance, value});
+                nearestPoint.pop_back();
+                break;
+            }
+        }
     }
 
-    int search(vector<vector<double>> learn, vector<double> test) {
-        const int id = bencher->add_op("KNN one record");
-        vector<vector<double>> nearestPoints;
-        const short maxElements = 5;
+    double getGreatestValue(vector <array<double,2>> &nearestPoint) {
+        map<double, int> countMap;
 
-        nearestPoints.push_back({calculateDistance(test, learn[0]), learn[0][3]});
+        for (auto &point: nearestPoint) {
+            countMap[point[1]]++;
+        }
 
-        for(int i = 1 ; i < maxElements; ++i) {
-            double temp = calculateDistance(test, learn[i]);
-            bool flgFound = false;
-
-            for(int j = 0; j < nearestPoints.size(); ++j){
-                if(nearestPoints[j][0] > temp) {
-                    nearestPoints.insert(nearestPoints.begin() + j, vector<double>{temp, learn[i][3]});
-                    flgFound = true;
-                    break;
-                }
-            }
-            if(!flgFound) {
-                nearestPoints.push_back(vector<double>{temp, learn[i][3]});
+        double best;
+        int bestC = 0;
+        for (auto x : countMap) {
+            if (bestC < x.second) {
+                bestC = x.second;
+                best = x.first;
             }
         }
 
-        #pragma omp parallel for default(shared)
-        for(int i = maxElements ; i < learn.size(); ++i) {
-            double temp = calculateDistance(test, learn[i]);
-            bool flgFound = false;
-            for(int j = 0; j < maxElements  && !flgFound; ++j){
-                if(nearestPoints[j][0] > temp) {
-                    #pragma omp critical(updateNearestPoints)
-                    {
-                        nearestPoints.insert(nearestPoints.begin() + j, vector<double>{temp, learn[i][3]});
-                        nearestPoints.pop_back();
-                        flgFound = true;
-                    }
-                }
-            }
-        }
-        bencher->end_op(id);
-
-        return (nearestPoints[0][1] + nearestPoints[1][1] + nearestPoints[2][1] + nearestPoints[3][1] + nearestPoints[4][1]) > 2;
+        return best;
     }
+
+public:
+    Knn(vector <array<double,4>> learnData) : learnData(learnData) {}
+
+    double testRecord(vector<double> testData, int processes, unsigned short neighbours = 1) {
+        vector <array<double,2>> nearestPoint;
+        nearestPoint.resize(neighbours);
+
+        for (auto &row: nearestPoint) {
+            row[0] = numeric_limits<double>::max();
+        }
+
+        int COLUMN_SIZE = learnData.size();
+        int COLUMN_PARTITION_SIZE = ceil(COLUMN_SIZE / (float) processes);
+        int ALL_PARTITION_COLUMN_SIZE = processes * COLUMN_PARTITION_SIZE;
+        nearestPoint.resize(neighbours * processes);
+
+        MPI_Datatype MPI_learn_row;
+        MPI_Type_contiguous(4, MPI_DOUBLE, &MPI_learn_row);
+        MPI_Type_commit(&MPI_learn_row);
+
+        MPI_Datatype MPI_NEAREST_POINT;
+        MPI_Type_contiguous(2, MPI_DOUBLE, &MPI_NEAREST_POINT);
+        MPI_Type_commit(&MPI_NEAREST_POINT);
+
+        vector<array<double,4>> LEARN_DATA_partition(COLUMN_PARTITION_SIZE);
+        MPI_Scatter(learnData.data(), COLUMN_PARTITION_SIZE, MPI_learn_row, LEARN_DATA_partition.data(),
+                    COLUMN_PARTITION_SIZE, MPI_learn_row, 0, MPI_COMM_WORLD);
+
+        auto nearestPoint_M = move(process(learnData, nearestPoint, testData, neighbours));
+
+        MPI_Gather(nearestPoint_M.data(), neighbours, MPI_NEAREST_POINT, nearestPoint.data(), neighbours,
+                   MPI_NEAREST_POINT, 0, MPI_COMM_WORLD);
+
+        return getGreatestValue(nearestPoint);;
+    }
+
+    vector<array<double,2>> process(vector <array<double,4>> learnData, vector <array<double,2>> nearestPoint,
+                           vector<double> testData, unsigned short neighbours = 1) {
+        for (auto &learnRow: learnData) {
+            checkData(nearestPoint, euqlidesDistance(testData, learnRow), learnRow.at(learnRow.size() - 1), neighbours);
+        }
+
+        nearestPoint.resize(neighbours);
+        return nearestPoint;
+    }
+
 };
 
-int main(int argc, char *argv[]) {
-    int expected_threads = stoi(string(argv[1]));
-    string file_path = string(argv[2]);
-    ifstream f(file_path.c_str());
+void spit_csv(std::string filename, std::vector<std::vector<double>> ds, std::vector<std::string>cnames)
+{
+    std::ofstream out;
+    out.open(filename);
 
-    if(f.bad()) {
-        exit(1);
+    for (auto name : cnames) {
+        out << name << ",";
     }
 
+    out << "\n";
+
+    for (int i = 0; i < ds[0].size(); ++i) {
+        for (int j = 0; j < cnames.size(); ++j) {
+            out << ds[j][i] << ((j == cnames.size() - 1) ? "\n" : ",");
+        }
+    }
+
+    out.close();
+}
+
+int main(int argc, char *argv[]) {
+    int pid;
+    int processes;
+
+    string file_path = string(argv[1]);
+//TODO add parameter to chose neighbours
+    int neighbours = 5;
     rapidcsv::Document doc(file_path);
 
-    omp_set_num_threads(expected_threads);
+    vector<double> R = doc.GetColumn<double>("R");
+    vector<double> G = doc.GetColumn<double>("G");
+    vector<double> B = doc.GetColumn<double>("B");
+    vector<double> SKIN = doc.GetColumn<double>("SKIN");
 
-    bool with_bench = false;
-
-    if (argc == 4) {
-        with_bench = true;
-    }
-
-    cout << "\n";
-
-    if (with_bench) {
-        vector <shared_ptr<Bench>> benchers;
-
-        for (int i = 0; i < 30; ++i) {
-            auto bencher = make_shared<Bench>(Bench());
-            auto algo = make_unique<Knn>(Knn(bencher, doc, vector < string > {"R", "G", "B", "SKIN"}));
-            algo->process();
-            benchers.push_back(bencher);
+    vector <array<double,4>> learn;
+    vector<vector<double>> test;
+    for (int i = 0; i < R.size(); ++i) {
+        if (i < R.size() * 0.8) {
+            learn.push_back({R[i], G[i], B[i], SKIN[i]});
+        } else {
+            test.push_back({R[i], G[i], B[i], SKIN[i]});
         }
-
-        Bench::print_benches(benchers);
-    } else {
-        auto bencher = make_shared<Bench>(Bench());
-        auto algo = make_unique<Knn>(Knn(bencher, doc, vector < string > {"R", "G", "B", "SKIN"}));
-
-        algo->process_all_and_spit_output();
-
-        bencher->print_bench();
     }
+
+    unique_ptr <Bench> bencher;
+    Knn knn(learn);
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &processes);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+    if (pid == 0) {
+        cout << "Number of processes running: " << processes;
+        cout << "\n";
+        bencher = make_unique<Bench>(Bench());
+    }
+
+    for (int i = 0; i < 30; ++i) {
+        int op_id;
+
+        if (pid == 0) {
+            op_id = bencher->add_op(to_string(i));
+        }
+        //***************************************************************************************/
+        //************************************* Algo ********************************************/
+        //***************************************************************************************/
+        unsigned correct = 0;
+        for(auto &testRow: test) {
+            if(knn.testRecord(testRow, processes, neighbours) == testRow[3])
+                ++correct;
+        }
+        cout<<"Accuracy: " << (float)correct / test.size() * 100.  << "%" << endl;
+
+        //***************************************************************************************/
+
+        if (pid == 0) {
+            bencher->end_op(op_id);
+        }
+    }
+
+    if (pid == 0) {
+//        spit_csv("knn-skin.csv", output, vector < string > {"R", "G", "B", "SKIN"});
+
+        bencher->csv_output(to_string(processes));
+    }
+
+    //***************************************************************************************/
+    //***************************************************************************************/
+
+    MPI_Finalize();
+
 
     return 0;
 }

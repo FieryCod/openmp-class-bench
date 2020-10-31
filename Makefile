@@ -19,3 +19,11 @@ run_standard_scaller: standard_scaller
 	@chmod +x standard_scaller
 	@mpirun -np $(PROCESSES) standard_scaller "resources/skin.csv"
 	@rm -Rf standard_scaller
+
+knn: src/knn.cpp
+	@OMPI_CXX=/usr/bin/g++ mpicxx -o knn src/knn.cpp -std=c++17
+
+run_knn: knn
+	@chmod +x knn
+	@mpirun -np $(PROCESSES) knn "resources/normalized.csv"
+	@rm -Rf knn
