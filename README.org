@@ -1,8 +1,29 @@
-#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMP
-#+AUTHOR:  Karol Wójcik, Krzysztof Swałdek
+#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMPI
+#+AUTHOR: Karol Wójcik, Krzysztof Swałdek
 #+DATE: 2020-10-14, Wtorek
+
+#+LATEX_CLASS: article
+#+LATEX_CLASS_OPTIONS: [12pt]
+#+LATEX_HEADER: \usepackage[a4paper, inner=37.125mm, outer=33.4125mm, top=37.125mm, bottom=37.125mm, heightrounded, marginparwidth=51pt, marginparsep=17pt, headsep=24pt]{geometry}
+#+EXCLUDE_TAGS: noexport
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LaTeX_HEADER: \usepackage[T1]{fontenc}
+#+LaTeX_HEADER: \usepackage{mathpazo}
+#+LaTeX_HEADER: \linespread{1.05}
+#+LATEX_HEADER: \usepackage{setspace}
+#+LATEX_HEADER: \doublespacing
+#+LATEX_HEADER: \usepackage[polish]{babel}
+#+LATEX_HEADER: \usepackage{polski}
+#+LATEX_HEADER: \usepackage{listings}
+#+LaTeX_HEADER: \lstset{basicstyle=\small\ttfamily}
+#+LaTeX_HEADER: \usepackage{alltt}
+#+LATEX_HEADER: \usepackage[utf8]{inputenc}
+#+LaTeX_HEADER: \usepackage{moreverb}
+#+LATEX_HEADER: \usepackage{ragged2e}
+#+LATEX_HEADER: \usepackage{xltxtra}
+#+LaTeX_HEADER: \usepackage{pdfpages}
+#+OPTIONS: ^:{}
 #+LANGUAGE: pl
-#+LATEX_HEADER: \usepackage[AUTO]{babel}
 #+OPTIONS: toc:nil
 
 #+begin_export latex
@@ -10,16 +31,13 @@
 #+end_export
 
 * Wprowadzenie
-Celem projektu jest implementacja popularnych algorytmów do przetwarzania danych, a także wykonanie i opis pomiaru czasowago wariantów algorytmów bez/z zrównolegleniem operując na środowisku OpenMP. \\
+Celem projektu jest implementacja popularnych algorytmów do przetwarzania danych, a także wykonanie i opis pomiaru czasowago wariantów algorytmów bez/z zrównolegleniem operując na środowisku MPI. \\
 
 \noindent
-W projekcie za wariant *A* uznaje się wersję algorytmu bez zrównoleglenia, podczas gdy wariant *B* odpowiada ze wersję algorytmu zrównoleglonego.
+W projekcie za wariant *A* uznaje się wersję algorytmu zrównoleglonego w c++. Za wersję *B* uznaje się wersję Pythonową algorytmu. \\
 
 \noindent
-Warianty *A* i *B* zostały porównane do ich alternatywnej implementacji napisanej w Pythonie (Wariant) *C*
-
-\noindent
-Pomiary zamieszczone w dokumencie zostały wykonane na podstawie uśrednienia czasu realizacji trzydziestu obiegów programu.
+Pomiary zamieszczone w dokumencie zostały wykonane na podstawie uśrednienia czasu realizacji trzydziestu obiegów programu. \\
 
 \noindent
 W ramach projektu zaimplementowano następujące algorytmy:
@@ -44,8 +62,7 @@ Procesor:
 
 \noindent
 Karta graficzna:
-    - nVidia GP107M [GeForce GTX 1050 Ti Mobile]
-    - Intel UHD Graphics 630 (Mobile)
+    - Nvidia GP107M GeForce GTX 1050 Ti Mobile
 
 #+begin_export latex
   \clearpage
@@ -91,36 +108,31 @@ f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
 #+end_export
 
 *** Pomiar A
-#+BEGIN_SRC sh :results output :exports results :eval no
-  make run_min_max_no_omp_bench
+#+BEGIN_SRC sh :results none :exports none :eval no
+  make PROCESSES=1 run_min_max && \
+  make PROCESSES=2 run_min_max && \
+  make PROCESSES=3 run_min_max && \
+  make PROCESSES=4 run_min_max && \
+  make PROCESSES=5 run_min_max && \
+  make PROCESSES=6 run_min_max
 #+end_src
 
-#+RESULTS:
-: g++ src/min_max.cpp -o min_max_no_omp
-:
-: Mean exec time for benches of op: 'DS->MinMaxDS' 180.7 ms
-: Mean exec time for benches of op: 'MAX op' 2.14444 ms
-: Mean exec time for benches of op: 'MIN op' 2.17778 ms
+#+CAPTION: Zależność czasu wykonania od liczby procesorów
+[[./resources/min_max1.png]]
 
+#+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
+[[./resources/min_max2.png]]
+
+#+BEGIN_SRC python :results none :exports none :eval no
+python3 visualize.py min_max
+#+end_src
 *** Pomiar B
-#+BEGIN_SRC sh :results output :exports results :eval no
-  make run_min_max_bench
-#+end_src
-
-#+RESULTS:
-: g++ -fopenmp src/min_max.cpp -o min_max
-:
-: Mean exec time for benches of op: 'DS->MinMaxDS' 163.3 ms
-: Mean exec time for benches of op: 'MAX op' 0.922222 ms
-: Mean exec time for benches of op: 'MIN op' 0.866667 ms
-
-*** Pomiar C
 #+BEGIN_SRC sh :results output :exports results :eval no
 python3 min_max.py
 #+end_src
 
 #+RESULTS:
-: Mean of elapsed time for 30 execs took 77.21493699991697 ms
+: Mean of elapsed time for 30 execs took 75.01101126665617 ms
 
 #+begin_export latex
 \clearpage
@@ -136,30 +148,26 @@ Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces st
 #+end_export
 
 *** Pomiar A
-#+BEGIN_SRC sh :results output :exports results :eval no
-  make run_standard_scaler_no_omp_bench
+#+BEGIN_SRC sh :results none :exports none :eval no
+  make PROCESSES=1 run_standard_scaler && \
+  make PROCESSES=2 run_standard_scaler && \
+  make PROCESSES=3 run_standard_scaler && \
+  make PROCESSES=4 run_standard_scaler && \
+  make PROCESSES=5 run_standard_scaler && \
+  make PROCESSES=6 run_standard_scaler
 #+end_src
 
-#+RESULTS:
-: g++ src/standard_scaler.cpp -o standard_scaler_no_omp
-:
-: Mean exec time for benches of op: 'DS->StandardScalerDS' 196.967 ms
-: Mean exec time for benches of op: 'MEAN op' 2.2 ms
-: Mean exec time for benches of op: 'STD op' 7.07778 ms
+#+CAPTION: Zależność czasu wykonania od liczby procesorów
+[[./resources/standard_scaler1.png]]
+
+#+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
+[[./resources/standard_scaler2.png]]
+
+#+BEGIN_SRC python :results none :exports none :eval no
+python3 visualize.py standard_scaler
+#+end_src
 
 *** Pomiar B
-#+BEGIN_SRC sh :results output :exports results :eval no
-  make run_standard_scaler_bench
-#+end_src
-
-#+RESULTS:
-: g++ -fopenmp src/standard_scaler.cpp -o standard_scaler
-:
-: Mean exec time for benches of op: 'DS->StandardScalerDS' 159.567 ms
-: Mean exec time for benches of op: 'MEAN op' 2.37778 ms
-: Mean exec time for benches of op: 'STD op' 0.833333 ms
-
-*** Pomiar C
 #+BEGIN_SRC sh :results output :exports results :eval no
 python3 standard_scaler.py
 #+end_src
@@ -177,31 +185,19 @@ Klasa ~Knn~ zdefiniowana w pliku ~src/knn.cpp~ realizuje proces klasyfikacji prz
 Liczba rekordów została zmniejszona do 5000.
 
 #+begin_export latex
-$$
 d(x) = \sqrt{\sum\limits_{i=1}^n(x_{iA}-x_{iB})^2} =\text{Odległość Euklidesowa}
-$$
 #+end_export
 
 *** Pomiar A
+#+BEGIN_SRC sh :results output :exports results :eval no
+python3 knn.py
+#+end_src
+
 #+RESULTS:
-: g++ src/knn.cpp -o knn_no_omp
-:
-: Mean exec time for benches of op: 'DS->KnnDS' 2515.77 ms
-: Mean exec time for benches of op: 'KNN one record' 1.74281 ms
+: Total time  0.1289057731628418
+: Acurancy  0.996996996996997
 
 *** Pomiar B
-#+RESULTS:
-: g++ -fopenmp src/knn.cpp -o knn
-: Accuracy: 100%
-: Mean exec time: 'DS->KnnDS' 2489 ms
-: Mean exec time: 'KNN one record' 1.74274 ms
-
-*** Pomiar C
-#+RESULTS:
-: g++ src/knn.cpp -o knn_no_omp
-:
-: Total time  0.11359834671020508
-: Accurancy  0.996996996996997
 
 #+begin_export latex
 \clearpage

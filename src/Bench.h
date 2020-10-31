@@ -1,22 +1,12 @@
+#include <chrono>
 #include <iostream>
 #include <map>
 #include <memory>
-#include <omp.h>
-#include <vector>
-#include <string>
+#include <fstream>
+#include <mpi.h>
 #include <set>
-#include <chrono>
-
-#ifndef omp_get_wtime
-
-double omp_get_wtime() {
-  return std::chrono::time_point_cast<std::chrono::milliseconds>(
-             std::chrono::system_clock::now())
-      .time_since_epoch()
-      .count();
-}
-
-#endif
+#include <string>
+#include <vector>
 
 struct Op {
   std::string name;
@@ -36,16 +26,16 @@ public:
     ops_names.insert(name);
     int size = state.size();
 
-    state.push_back(Op(name, omp_get_wtime()));
+    state.push_back(Op(name, MPI_Wtime()));
 
     return size;
   }
 
   void end_op(int id) {
-    double end = omp_get_wtime();
+    double end = MPI_Wtime();
 
     state[id].end = end;
-    state[id].timestamp = end - state[id].start;
+    state[id].timestamp = (end - state[id].start) * 1000;
   }
 
   void print_bench() {
@@ -87,6 +77,21 @@ public:
     return opv;
   }
 
+
+  void csv_output(std::string idx) {
+    std::ofstream out;
+    out.open("resources/bench_output" + idx + ".csv");
+
+    out << "Run";
+    out << "\n";
+
+    for (auto op : state) {
+      out << op.timestamp << "\n";
+    }
+
+    out.close();
+  }
+
 private:
   std::vector<Op> state;
   std::set<std::string> ops_names;
@@ -120,7 +125,7 @@ private:
   void print_op_bench(std::string name) {
     std::vector<Op> opv = ops_by_name(name);
 
-    std::cout << "Mean exec time:"
-              << " '" << name << "' " << mean_op(opv) << " ms" << "\n";
+    std::cout << "Mean exec time:" << " '" << name << "' "
+              << mean_op(opv) << " ms" << "\n";
   }
 };

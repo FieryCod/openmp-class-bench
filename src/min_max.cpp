@@ -1,168 +1,172 @@
+#include <cmath>
+#include <cstddef>
 #include "Bench.h"
 #include "rapidcsv.h"
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <omp.h>
+#include <cstdio>
+#include <mpi.h>
 #include <string>
 #include <vector>
 
-#ifndef _OPENMP
+std::vector<double> min_max(std::vector<double> xv, double min_t, double max_t) {
+  std::vector<double> nxv = std::vector<double>();
 
-void omp_set_num_threads(int _x) {}
-
-#endif
-
-class MinMax {
-public:
-  MinMax(std::shared_ptr<Bench> bencher,
-         rapidcsv::Document doc,
-         std::vector<std::string> cvnames
-  ) {
-    this->bencher = bencher;
-    this->cvnames = cvnames;
-    this->doc = doc;
+  for (auto x : xv) {
+    nxv.push_back((x - min_t) / (max_t - min_t));
   }
 
-  std::vector<double> min_max(std::vector<double> xv) {
-    auto max_t = max(xv);
-    auto min_t = min(xv);
+  return nxv;
+}
 
-    std::vector<double>nxv = std::vector<double>();
+double max(std::vector<double> xv) {
+  double max = std::numeric_limits<double>::min();
 
-    #pragma omp parallel
-    {
-      std::vector<double> nxv_private;
-
-      #pragma omp for nowait
-      for (auto x : xv) {
-        nxv_private.push_back((x - min_t) / (max_t - min_t));
-      }
-
-      #pragma omp critical
-      nxv.insert(nxv.end(), nxv_private.begin(), nxv_private.end());
+  for (auto x : xv) {
+    if (x > max) {
+      max = x;
     }
-
-    return nxv;
   }
 
-  std::vector<std::vector<double>> process() {
-    int id = bencher->add_op("DS->MinMaxDS");
+  return max;
+}
 
-    auto v = std::vector<std::vector<double>>{
-      min_max(doc.GetColumn<double>("R")),
-      min_max(doc.GetColumn<double>("G")),
-      min_max(doc.GetColumn<double>("B")),
+double min(std::vector<double> xv) {
+  double min = std::numeric_limits<double>::max();
+
+  for (auto x : xv) {
+    if (x < min) {
+      min = x;
+    }
+  }
+
+  return min;
+}
+
+
+
+void spit_csv(std::string filename, std::vector<std::vector<double>> ds, std::vector<std::string>cnames)
+{
+  std::ofstream out;
+  out.open(filename);
+
+  for (auto name : cnames) {
+    out << name << ",";
+  }
+
+  out << "\n";
+
+  for (int i = 0; i < ds[0].size(); ++i) {
+    for (int j = 0; j < cnames.size(); ++j) {
+      out << ds[j][i] << ((j == cnames.size() - 1) ? "\n" : ",");
+    }
+  }
+
+  out.close();
+}
+
+int main(int argc, char *argv[]) {
+  int pid;
+  int processes;
+
+  std::string file_path = std::string(argv[1]);
+  rapidcsv::Document doc(file_path);
+
+  std::vector<double> R = doc.GetColumn<double>("R");
+  std::vector<double> G = doc.GetColumn<double>("G");
+  std::vector<double> B = doc.GetColumn<double>("B");
+
+  double MIN_R = min(R);
+  double MAX_R = max(R);
+
+  double MIN_G = min(G);
+  double MAX_G = max(G);
+
+  double MIN_B = min(B);
+  double MAX_B = max(B);
+
+  std::unique_ptr<Bench> bencher;
+
+  MPI_Init(&argc, &argv);
+  MPI_Comm_size(MPI_COMM_WORLD, &processes);
+  MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+  int COLUMN_SIZE = R.size();
+  int COLUMN_PARTITION_SIZE = std::ceil(COLUMN_SIZE / (float) processes);
+  int ALL_PARTITION_COLUMN_SIZE = processes * COLUMN_PARTITION_SIZE;
+
+  if (pid == 0) {
+    std::cout << "Number of processes running: " << processes;
+    std::cout << "\n";
+    std::cout << "Column size: " << COLUMN_SIZE << "\n";
+    std::cout << "New column size: " << processes * COLUMN_PARTITION_SIZE << "\n";
+    bencher = std::make_unique<Bench>(Bench());
+  }
+
+  std::vector<double> R_new(ALL_PARTITION_COLUMN_SIZE);
+  std::vector<double> G_new(ALL_PARTITION_COLUMN_SIZE);
+  std::vector<double> B_new(ALL_PARTITION_COLUMN_SIZE);
+
+  for (int i = 0; i < 30; ++i) {
+    int op_id;
+
+    if (pid == 0) {
+      op_id = bencher->add_op(std::to_string(i));
+    }
+    //***************************************************************************************/
+    //************************************* Algo ********************************************/
+    //***************************************************************************************/
+
+    //************************************** R **********************************************/
+    std::vector<double> R_partition(COLUMN_PARTITION_SIZE);
+    MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, R_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    auto R_partition_M = std::move(min_max(R_partition, MIN_R, MAX_R));
+    MPI_Gather(R_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, R_new.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    //***************************************************************************************/
+
+    //************************************** G **********************************************/
+    std::vector<double> G_partition(COLUMN_PARTITION_SIZE);
+    MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, G_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    auto G_partition_M = std::move(min_max(G_partition, MIN_G, MAX_G));
+    MPI_Gather(G_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, G_new.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    //***************************************************************************************/
+
+    //************************************** B **********************************************/
+    std::vector<double> B_partition(COLUMN_PARTITION_SIZE);
+    MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, B_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    auto B_partition_M = std::move(min_max(B_partition, MIN_B, MAX_B));
+    MPI_Gather(B_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, B_new.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    //***************************************************************************************/
+
+    if (pid == 0) {
+      bencher->end_op(op_id);
+    }
+  }
+
+  if (pid == 0) {
+    R_new.resize(COLUMN_SIZE);
+    G_new.resize(COLUMN_SIZE);
+    B_new.resize(COLUMN_SIZE);
+
+    auto output = std::vector<std::vector<double>>{
+      R_new,
+      G_new,
+      B_new,
       doc.GetColumn<double>("SKIN")
     };
 
-    bencher->end_op(id);
+    spit_csv("min_max-skin.csv", output, std::vector<std::string>{"R", "G", "B", "SKIN"});
 
-    return v;
+    bencher->csv_output(std::to_string(processes));
   }
 
-  void spit_csv(
-    std::string filename,
-    std::vector<std::vector<double>> ds,
-    std::vector<std::string>cnames
-  ) {
-    std::ofstream out;
-    out.open(filename);
+  //***************************************************************************************/
+  //***************************************************************************************/
 
-    for (auto name : cnames) {
-      out << name << ",";
-    }
+  MPI_Finalize();
 
-    out << "\n";
-
-    for (int i = 0; i < ds[0].size(); ++i) {
-      for (int j = 0; j < cnames.size(); ++j) {
-        out << ds[j][i] << ((j == cnames.size() - 1) ? "\n" : ",");
-      }
-    }
-
-    out.close();
-  }
-
-  void process_all_and_spit_output() {
-    spit_csv("min_max-skin.csv", process(), cvnames);
-  }
-
-private:
-  std::vector<std::string> cvnames;
-  rapidcsv::Document doc;
-  std::shared_ptr<Bench> bencher;
-
-  double max(std::vector<double> xv) {
-    int id = bencher->add_op("MAX op");
-
-    double max = std::numeric_limits<double>::min();
-
-    #pragma omp parallel for
-    for (auto x : xv) {
-      if (x > max) {
-        max = x;
-      }
-    }
-
-    bencher->end_op(id);
-
-    return max;
-  }
-
-  double min(std::vector<double> xv) {
-    int id = bencher->add_op("MIN op");
-
-    double min = std::numeric_limits<double>::max();
-
-    #pragma omp parallel for
-    for (auto x : xv) {
-      if (x < min) {
-        min = x;
-      }
-    }
-
-    bencher->end_op(id);
-
-    return min;
-  }
-};
-
-int main(int argc, char *argv[]) {
-  int expected_threads = std::stoi(std::string(argv[1]));
-  std::string file_path = std::string(argv[2]);
-  rapidcsv::Document doc(file_path);
-
-  omp_set_num_threads(expected_threads);
-
-  bool with_bench = false;
-
-  if (argc == 4) {
-    with_bench = true;
-  }
-
-  std::cout << "\n";
-
-  if (with_bench) {
-    std::vector<std::shared_ptr<Bench>> benchers;
-
-    for (int i = 0; i < 30; ++i) {
-      auto bencher = std::make_shared<Bench>(Bench());
-      auto algo = std::make_unique<MinMax>(MinMax(bencher, doc, std::vector<std::string>{"R", "G", "B", "SKIN"}));
-      algo->process();
-      benchers.push_back(bencher);
-    }
-
-    Bench::print_benches(benchers);
-  } else {
-    auto bencher = std::make_shared<Bench>(Bench());
-    auto algo = std::make_unique<MinMax>(MinMax(bencher, doc, std::vector<std::string>{"R", "G", "B", "SKIN"}));
-
-    algo->process_all_and_spit_output();
-
-    bencher->print_bench();
-  }
 
   return 0;
 }
