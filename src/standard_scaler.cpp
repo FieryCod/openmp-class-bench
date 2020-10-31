@@ -4,160 +4,165 @@
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <omp.h>
+#include <mpi.h>
 #include <string>
 #include <vector>
 
-#ifndef _OPENMP
+double mean(std::vector<double> xv) {
+    double sum = 0;
+    for (auto x : xv) {
+        sum += x;
+    }
 
-void omp_set_num_threads(int _x) {}
+    return sum / xv.size();
+}
 
-#endif
+double stdf(std::vector<double> xv, double mean_t) {
+    double sum = 0;
+    for (auto x : xv) {
+        sum += pow(x - mean_t, 2);
+    }
 
-class StandardScaler {
-public:
-  StandardScaler(std::shared_ptr<Bench> bencher,
-                 rapidcsv::Document doc,
-                 std::vector<std::string> cvnames) {
-    this->bencher = bencher;
-    this->cvnames = cvnames;
-    this->doc = doc;
-  }
+    return sqrt(sum / xv.size());
+}
 
-  std::vector<double> standard_scaler(std::vector<double> xv) {
-    auto mean_t = mean(xv);
-    auto std_t = std(xv, mean_t);
+std::vector<double> standard_scaler(std::vector<double> xv, double mean_t, double std_t) {
+    std::vector<double> nxv = std::vector<double>();
 
-    std::vector<double>nxv = std::vector<double>();
-
-    #pragma omp parallel
     {
-      std::vector<double> nxv_private;
+        std::vector<double> nxv_private;
 
-      #pragma omp for nowait
-      for (auto x : xv) {
-        nxv_private.push_back((x - mean_t) / std_t);
-      }
+        for (auto x : xv) {
+            nxv_private.push_back((x - mean_t) / std_t);
+        }
 
-      #pragma omp critical
-      nxv.insert(nxv.end(), nxv_private.begin(), nxv_private.end());
+        nxv.insert(nxv.end(), nxv_private.begin(), nxv_private.end());
     }
 
     return nxv;
-  }
+}
 
-  std::vector<std::vector<double>> process() {
-    int id = bencher->add_op("DS->StandardScalerDS");
-
-    auto v = std::vector<std::vector<double>>{
-      standard_scaler(doc.GetColumn<double>("R")),
-      standard_scaler(doc.GetColumn<double>("G")),
-      standard_scaler(doc.GetColumn<double>("B")),
-      doc.GetColumn<double>("SKIN")
-    };
-
-    bencher->end_op(id);
-
-    return v;
-  }
-
-  void spit_csv(
-                std::string filename,
-                std::vector<std::vector<double>> ds,
-                std::vector<std::string>cnames
-                ) {
+void spit_csv(std::string filename, std::vector <std::vector<double>> ds, std::vector <std::string> cnames) {
     std::ofstream out;
     out.open(filename);
 
     for (auto name : cnames) {
-      out << name << ",";
+        out << name << ",";
     }
 
     out << "\n";
 
     for (int i = 0; i < ds[0].size(); ++i) {
-      for (int j = 0; j < cnames.size(); ++j) {
-        out << ds[j][i] << ((j == cnames.size() - 1) ? "\n" : ",");
-      }
+        for (int j = 0; j < cnames.size(); ++j) {
+            out << ds[j][i] << ((j == cnames.size() - 1) ? "\n" : ",");
+        }
     }
 
     out.close();
-  }
-
-  void process_all_and_spit_output() {
-    spit_csv("standard_scaler-skin.csv", process(), cvnames);
-  }
-
-private:
-  std::vector<std::string> cvnames;
-  rapidcsv::Document doc;
-  std::shared_ptr<Bench> bencher;
-
-  double mean(std::vector<double> xv) {
-    int id = bencher->add_op("MEAN op");
-
-    double sum = 0;
-
-    #pragma omp parallel for
-    for (auto x : xv) {
-      sum += x;
-    }
-
-    bencher->end_op(id);
-
-    return sum / xv.size();
-  }
-
-  double std(std::vector<double> xv, double mean_t) {
-    int id = bencher->add_op("STD op");
-
-    double sum = 0;
-
-    #pragma omp parallel for default(none) shared(xv) private(mean_t), reduction(+ : sum)
-    for (auto x : xv) {
-      sum += pow(x - mean_t, 2);
-    }
-
-    bencher->end_op(id);
-
-    return sqrt(sum / xv.size());
-  }
-};
+}
 
 int main(int argc, char *argv[]) {
-  int expected_threads = std::stoi(std::string(argv[1]));
-  std::string file_path = std::string(argv[2]);
-  rapidcsv::Document doc(file_path);
+    int pid;
+    int processes;
 
-  omp_set_num_threads(expected_threads);
+    std::string file_path = std::string(argv[1]);
+    rapidcsv::Document doc(file_path);
 
-  bool with_bench = false;
+    std::vector<double> R = doc.GetColumn<double>("R");
+    std::vector<double> G = doc.GetColumn<double>("G");
+    std::vector<double> B = doc.GetColumn<double>("B");
 
-  if (argc == 4) {
-    with_bench = true;
-  }
+    double MEAN_R = mean(R);
+    double STD_R = stdf(R, MEAN_R);
 
-  std::cout << "\n";
+    double MEAN_G = mean(G);
+    double STD_G = stdf(G, MEAN_G);
 
-  if (with_bench) {
-    std::vector<std::shared_ptr<Bench>> benchers;
+    double MEAN_B = mean(B);
+    double STD_B = stdf(B, MEAN_B);
 
-    for (int i = 0; i < 30; ++i) {
-      auto bencher = std::make_shared<Bench>(Bench());
-      auto algo = std::make_unique<StandardScaler>(StandardScaler(bencher, doc, std::vector<std::string>{"R", "G", "B", "SKIN"}));
-      algo->process();
-      benchers.push_back(bencher);
+    std::unique_ptr <Bench> bencher;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &processes);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+    int COLUMN_SIZE = R.size();
+    int COLUMN_PARTITION_SIZE = std::ceil(COLUMN_SIZE / (float) processes);
+    int ALL_PARTITION_COLUMN_SIZE = processes * COLUMN_PARTITION_SIZE;
+
+    if (pid == 0) {
+        std::cout << "Number of processes running: " << processes;
+        std::cout << "\n";
+        std::cout << "Column size: " << COLUMN_SIZE << "\n";
+        std::cout << "New column size: " << processes * COLUMN_PARTITION_SIZE << "\n";
+        bencher = std::make_unique<Bench>(Bench());
     }
 
-    Bench::print_benches(benchers);
-  } else {
-    auto bencher = std::make_shared<Bench>(Bench());
-    auto algo = std::make_unique<StandardScaler>(StandardScaler(bencher, doc, std::vector<std::string>{"R", "G", "B", "SKIN"}));
+    std::vector<double> R_new(ALL_PARTITION_COLUMN_SIZE);
+    std::vector<double> G_new(ALL_PARTITION_COLUMN_SIZE);
+    std::vector<double> B_new(ALL_PARTITION_COLUMN_SIZE);
 
-    algo->process_all_and_spit_output();
+    for (int i = 0; i < 30; ++i) {
+        int op_id;
 
-    bencher->print_bench();
-  }
+        if (pid == 0) {
+            op_id = bencher->add_op(std::to_string(i));
+        }
+        //***************************************************************************************/
+        //************************************* Algo ********************************************/
+        //***************************************************************************************/
 
-  return 0;
+        //************************************** R **********************************************/
+        std::vector<double> R_partition(COLUMN_PARTITION_SIZE);
+        MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, R_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+                    0, MPI_COMM_WORLD);
+        auto R_partition_M = std::move(standard_scaler(R_partition, MEAN_R, STD_R));
+        MPI_Gather(R_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, R_new.data(), COLUMN_PARTITION_SIZE,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        //***************************************************************************************/
+
+        //************************************** G **********************************************/
+        std::vector<double> G_partition(COLUMN_PARTITION_SIZE);
+        MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, G_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+                    0, MPI_COMM_WORLD);
+        auto G_partition_M = std::move(standard_scaler(G_partition, MEAN_G, STD_G));
+        MPI_Gather(G_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, G_new.data(), COLUMN_PARTITION_SIZE,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        //***************************************************************************************/
+
+        //************************************** B **********************************************/
+        std::vector<double> B_partition(COLUMN_PARTITION_SIZE);
+        MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, B_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+                    0, MPI_COMM_WORLD);
+        auto B_partition_M = std::move(standard_scaler(B_partition, MEAN_B, STD_B));
+        MPI_Gather(B_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, B_new.data(), COLUMN_PARTITION_SIZE,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        //***************************************************************************************/
+
+        if (pid == 0) {
+            bencher->end_op(op_id);
+        }
+    }
+
+    if (pid == 0) {
+        R_new.resize(COLUMN_SIZE);
+        G_new.resize(COLUMN_SIZE);
+        B_new.resize(COLUMN_SIZE);
+
+        auto output = std::vector < std::vector < double >> {
+                R_new,
+                G_new,
+                B_new,
+                doc.GetColumn<double>("SKIN")
+        };
+
+        spit_csv("standard-scaler-skin.csv", output, std::vector < std::string > {"R", "G", "B", "SKIN"});
+
+        bencher->csv_output(std::to_string(processes));
+    }
+
+    MPI_Finalize();
+
+    return 0;
 }
