@@ -34,7 +34,8 @@
 Celem projektu jest implementacja popularnych algorytmów do przetwarzania danych, a także wykonanie i opis pomiaru czasowago wariantów algorytmów bez/z zrównolegleniem operując na środowisku MPI. \\
 
 \noindent
-W projekcie za wariant *A* uznaje się wersję algorytmu zrównoleglonego w c++. Za wersję *B* uznaje się wersję Pythonową algorytmu. \\
+W projekcie za wariant *A* uznaje się wersję algorytmu zrównoleglonego w c++.
+Za wersję *B* uznaje się wersję Pythonową algorytmu. \\
 
 \noindent
 Pomiary zamieszczone w dokumencie zostały wykonane na podstawie uśrednienia czasu realizacji trzydziestu obiegów programu. \\
