@@ -1,6 +1,6 @@
-#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMPI
+#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu Cuda
 #+AUTHOR: Karol Wójcik, Krzysztof Swałdek
-#+DATE: 2020-10-14, Wtorek
+#+DATE: 2020-11-06, Piątek
 
 #+LATEX_CLASS: article
 #+LATEX_CLASS_OPTIONS: [12pt]
