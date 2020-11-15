@@ -110,26 +110,45 @@
 
 *** Pomiar A
     #+BEGIN_SRC sh :results none :exports none :eval no
-      make PROCESSES=1 run_min_max && \
-          make PROCESSES=2 run_min_max && \
-          make PROCESSES=3 run_min_max && \
-          make PROCESSES=4 run_min_max && \
-          make PROCESSES=5 run_min_max && \
-          make PROCESSES=6 run_min_max
+      make TB_SWITCH=1 THREADS=20 run_min_max && \
+      make TB_SWITCH=1 THREADS=40 run_min_max && \
+      make TB_SWITCH=1 THREADS=60 run_min_max && \
+      make TB_SWITCH=1 THREADS=80 run_min_max && \
+      make TB_SWITCH=1 THREADS=100 run_min_max && \
+      make TB_SWITCH=1 THREADS=120 run_min_max
     #+end_src
 
-    #+CAPTION: Zależność czasu wykonania od liczby procesorów
-    [[./resources/min_max1.png]]
+    #+BEGIN_SRC sh :results none :exports none :eval no
+      python3 visualize1.py min_max
+    #+end_src
 
-    #+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
-    [[./resources/min_max2.png]]
+    #+CAPTION: Zależność czasu wykonania od threadów (blocks 12253)
+    [[./resources/min_maxT1.png]]
+
+    #+CAPTION: Zależność przyspieszenia od threadów (blocks 12253)
+    [[./resources/min_maxT2.png]]
 
     #+BEGIN_SRC sh :results none :exports none :eval no
-      python visualize.py min_max
+      make TB_SWITCH=0 BLOCKS=12260 run_min_max && \
+      make TB_SWITCH=0 BLOCKS=13260 run_min_max && \
+      make TB_SWITCH=0 BLOCKS=14260 run_min_max && \
+      make TB_SWITCH=0 BLOCKS=15260 run_min_max && \
+      make TB_SWITCH=0 BLOCKS=16260 run_min_max && \
+      make TB_SWITCH=0 BLOCKS=17260 run_min_max
+    #+end_src
+
+    #+CAPTION: Zależność czasu wykonania od blocków (threads 20)
+    [[./resources/min_maxB1.png]]
+
+    #+CAPTION: Zależność przyspieszenia od blocków (threads 20)
+    [[./resources/min_maxB2.png]]
+
+    #+BEGIN_SRC sh :results none :exports none :eval no
+      python3 visualize2.py min_max
     #+end_src
 *** Pomiar B
     #+BEGIN_SRC sh :results output :exports results :eval no
-      python min_max.py
+      python3 min_max.py
     #+end_src
 
     #+RESULTS:
@@ -150,23 +169,42 @@
 
 *** Pomiar A
     #+BEGIN_SRC sh :results none :exports none :eval no
-      make PROCESSES=1 run_standard_scaler && \
-          make PROCESSES=2 run_standard_scaler && \
-          make PROCESSES=3 run_standard_scaler && \
-          make PROCESSES=4 run_standard_scaler && \
-          make PROCESSES=5 run_standard_scaler && \
-          make PROCESSES=6 run_standard_scaler
+      make TB_SWITCH=1 THREADS=20 run_standard_scaler && \
+      make TB_SWITCH=1 THREADS=40 run_standard_scaler && \
+      make TB_SWITCH=1 THREADS=60 run_standard_scaler && \
+      make TB_SWITCH=1 THREADS=80 run_standard_scaler && \
+      make TB_SWITCH=1 THREADS=100 run_standard_scaler && \
+      make TB_SWITCH=1 THREADS=120 run_standard_scaler
     #+end_src
-
-    #+CAPTION: Zależność czasu wykonania od liczby procesorów
-    [[./resources/standard_scaler1.png]]
-
-    #+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
-    [[./resources/standard_scaler2.png]]
 
     #+BEGIN_SRC sh :results none :exports none :eval no
-      python visualize.py standard_scaler
+      python3 visualize1.py standard_scaler
     #+end_src
+
+    #+CAPTION: Zależność czasu wykonania od threadów (blocks 12253)
+    [[./resources/standard_scalerT1.png]]
+
+    #+CAPTION: Zależność przyspieszenia od threadów (blocks 12253)
+    [[./resources/standard_scalerT2.png]]
+
+    #+BEGIN_SRC sh :results none :exports none :eval no
+      make TB_SWITCH=0 BLOCKS=12260 run_standard_scaler && \
+      make TB_SWITCH=0 BLOCKS=13260 run_standard_scaler && \
+      make TB_SWITCH=0 BLOCKS=14260 run_standard_scaler && \
+      make TB_SWITCH=0 BLOCKS=15260 run_standard_scaler && \
+      make TB_SWITCH=0 BLOCKS=16260 run_standard_scaler && \
+      make TB_SWITCH=0 BLOCKS=17260 run_standard_scaler
+    #+end_src
+
+    #+BEGIN_SRC sh :results none :exports none :eval no
+      python3 visualize2.py standard_scaler
+    #+end_src
+
+    #+CAPTION: Zależność czasu wykonania od blocków (threads 20)
+    [[./resources/standard_scalerB1.png]]
+
+    #+CAPTION: Zależność przyspieszenia od blocków (threads 20)
+    [[./resources/standard_scalerB2.png]]
 *** Pomiar B
     #+BEGIN_SRC sh :results output :exports results :eval no
       python3 standard_scaler.py
@@ -190,24 +228,42 @@
 
 *** Pomiar A
     #+BEGIN_SRC sh :results none :exports none :eval no
-      make PROCESSES=1 run_knn && \
-          make PROCESSES=2 run_knn && \
-          make PROCESSES=3 run_knn && \
-          make PROCESSES=4 run_knn && \
-          make PROCESSES=5 run_knn && \
-          make PROCESSES=6 run_knn
+      make TB_SWITCH=1 THREADS=20 run_knn && \
+      make TB_SWITCH=1 THREADS=40 run_knn && \
+      make TB_SWITCH=1 THREADS=60 run_knn && \
+      make TB_SWITCH=1 THREADS=80 run_knn && \
+      make TB_SWITCH=1 THREADS=100 run_knn && \
+      make TB_SWITCH=1 THREADS=120 run_knn
     #+end_src
 
     #+BEGIN_SRC sh :results none :exports none :eval no
-      python visualize.py knn
+      python3 visualize1.py knn
     #+end_src
 
-    #+CAPTION: Zależność czasu wykonania od liczby procesorów
-    [[./resources/knn1.png]]
+    #+CAPTION: Zależność czasu wykonania od threadów (blocks 12253)
+    [[./resources/knnT1.png]]
 
-    #+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
-    [[./resources/knn2.png]]
+    #+CAPTION: Zależność przyspieszenia od threadów (blocks 12253)
+    [[./resources/knnT2.png]]
 
+    #+BEGIN_SRC sh :results none :exports none :eval no
+      make TB_SWITCH=0 BLOCKS=12260 run_knn && \
+      make TB_SWITCH=0 BLOCKS=13260 run_knn && \
+      make TB_SWITCH=0 BLOCKS=14260 run_knn && \
+      make TB_SWITCH=0 BLOCKS=15260 run_knn && \
+      make TB_SWITCH=0 BLOCKS=16260 run_knn && \
+      make TB_SWITCH=0 BLOCKS=17260 run_knn
+    #+end_src
+
+    #+BEGIN_SRC sh :results none :exports none :eval no
+      python3 visualize2.py knn
+    #+end_src
+
+    #+CAPTION: Zależność czasu wykonania od blocków (threads 20)
+    [[./resources/knnB1.png]]
+
+    #+CAPTION: Zależność przyspieszenia od blocków (threads 20)
+    [[./resources/knnB2.png]]
 *** Pomiar B
     #+BEGIN_SRC sh :results output :exports results :eval no
       python3 knn.py

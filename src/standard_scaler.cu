@@ -20,36 +20,30 @@ static void HandleError(cudaError_t err, const char *file, int line) {
 }
 #define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__))
 
-void __global__ min_max(double *xv, double min_t, double max_t, int count) {
+void __global__ standard_scaler(double *xv, double std, double mean, int count) {
   int index = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (index < count) {
-    xv[index] = (xv[index] - min_t) / (max_t - min_t);
+    xv[index] = (xv[index] - mean) / std;
   }
 }
 
-double max(std::vector<double> xv) {
-  double max = std::numeric_limits<double>::min();
-
-  for (auto x : xv) {
-    if (x > max) {
-      max = x;
+double mean(std::vector<double> xv) {
+    double sum = 0;
+    for (auto x : xv) {
+        sum += x;
     }
-  }
 
-  return max;
+    return sum / xv.size();
 }
 
-double min(std::vector<double> xv) {
-  double min = std::numeric_limits<double>::max();
-
-  for (auto x : xv) {
-    if (x < min) {
-      min = x;
+double stdf(std::vector<double> xv, double mean_t) {
+    double sum = 0;
+    for (auto x : xv) {
+        sum += pow(x - mean_t, 2);
     }
-  }
 
-  return min;
+    return sqrt(sum / xv.size());
 }
 
 void spit_csv(std::string filename, std::vector<std::vector<double>> ds, std::vector<std::string>cnames)
@@ -92,16 +86,16 @@ int main(int argc, char *argv[]) {
   int size = count * sizeof(double);
 
   /**
-   * Calc min, max for columns
+   * Calc MEAN and std for columns
    */
-  double MIN_R = min(R);
-  double MAX_R = max(R);
+   double MEAN_R = mean(R);
+   double STD_R = stdf(R, MEAN_R);
 
-  double MIN_G = min(G);
-  double MAX_G = max(G);
+   double MEAN_G = mean(G);
+   double STD_G = stdf(G, MEAN_G);
 
-  double MIN_B = min(B);
-  double MAX_B = max(B);
+   double MEAN_B = mean(B);
+   double STD_B = stdf(B, MEAN_B);
 
   std::cout << "BLOCKS: " << BLOCKS
             << "\nTHREADS: " << THREADS
@@ -138,9 +132,9 @@ int main(int argc, char *argv[]) {
     /**
      * Algorithm
      */
-    min_max<<<BLOCKS, THREADS>>>(d_R, MIN_R, MAX_R, count);
-    min_max<<<BLOCKS, THREADS>>>(d_G, MIN_G, MAX_G, count);
-    min_max<<<BLOCKS, THREADS>>>(d_B, MIN_B, MAX_B, count);
+    standard_scaler<<<BLOCKS, THREADS>>>(d_R, STD_R, MEAN_R, count);
+    standard_scaler<<<BLOCKS, THREADS>>>(d_G, STD_G, MEAN_G, count);
+    standard_scaler<<<BLOCKS, THREADS>>>(d_B, STD_B, MEAN_B, count);
 
     /**
      * Copy modified data to host
@@ -167,8 +161,8 @@ int main(int argc, char *argv[]) {
     doc.GetColumn<double>("SKIN")
   };
 
-  spit_csv("min_max-skin.csv", output, std::vector<std::string>{"R", "G", "B", "SKIN"});
-  bencher->csv_output((TB_SWITCH == 1 ? "T" : "B") + std::string("_min_max") +
+  spit_csv("standard_scaler-skin.csv", output, std::vector<std::string>{"R", "G", "B", "SKIN"});
+  bencher->csv_output((TB_SWITCH == 1 ? "T" : "B") + std::string("_standard_scaler") +
                       (TB_SWITCH == 1 ? std ::to_string(THREADS) : std::to_string(BLOCKS)));
 
   return 0;

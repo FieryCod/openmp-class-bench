@@ -9,4 +9,3 @@ __pycache__
 min_max-skin-py.csv
 standard_scaler-skin-py.csv
 .ccls-cache
-resources/bench_output*

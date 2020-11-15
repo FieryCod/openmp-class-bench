@@ -49,6 +49,10 @@ public:
     }
   }
 
+  double op_timestamp(int id) {
+    return state[id].timestamp;
+  }
+
   static void print_benches(std::vector<std::shared_ptr<Bench>> benches) {
     auto ops_names = benches[0]->ops_names;
     std::map<std::string, std::vector<double>> benchs_op_mean;

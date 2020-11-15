@@ -1,4 +1,6 @@
-PROCESSES=1
+THREADS=20
+BLOCKS=12253
+TB_SWITCH=1
 
 resources/dataset.csv:
 	mkdir -p resources
@@ -9,21 +11,21 @@ min_max: src/min_max.cu
 
 run_min_max: min_max
 	@chmod +x min_max
-	@./min_max "resources/skin.csv"
+	@./min_max "resources/skin.csv" $(THREADS) $(BLOCKS) $(TB_SWITCH)
 	@rm -Rf min_max
 
-standard_scaler: src/standard_scaler.cpp
-	@OMPI_CXX=/usr/bin/g++ mpicxx -o standard_scaler src/standard_scaler.cpp -std=c++17
+standard_scaler: src/standard_scaler.cu
+	nvcc -std=c++17 src/standard_scaler.cu -o standard_scaler
 
 run_standard_scaler: standard_scaler
 	@chmod +x standard_scaler
-	@mpirun -np $(PROCESSES) standard_scaler "resources/skin.csv"
+	@./standard_scaler "resources/skin.csv" $(THREADS) $(BLOCKS) $(TB_SWITCH)
 	@rm -Rf standard_scaler
 
-knn: src/knn.cpp
-	@OMPI_CXX=/usr/bin/g++ mpicxx -o knn src/knn.cpp -std=c++17
+knn: src/knn.cu
+	nvcc -std=c++17 src/knn.cu -o knn
 
 run_knn: knn
 	@chmod +x knn
-	@mpirun -np $(PROCESSES) knn "resources/normalized.csv"
+	@./knn "resources/skin1.csv" $(THREADS) $(BLOCKS) $(TB_SWITCH)
 	@rm -Rf knn
