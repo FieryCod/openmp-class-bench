@@ -3,18 +3,17 @@
 #include <map>
 #include <memory>
 #include <fstream>
-#include <mpi.h>
 #include <set>
 #include <string>
 #include <vector>
 
 struct Op {
   std::string name;
-  double start;
-  double end;
+  cudaEvent_t start;
+  cudaEvent_t end;
   double timestamp;
 
-  Op(std::string name, double start) {
+  Op(std::string name, cudaEvent_t start) {
     this->name = name;
     this->start = start;
   }
@@ -23,19 +22,25 @@ struct Op {
 class Bench {
 public:
   int add_op(std::string name) {
+    cudaEvent_t start;
+    cudaEventCreate(&start);
+
     ops_names.insert(name);
     int size = state.size();
 
-    state.push_back(Op(name, MPI_Wtime()));
+    state.push_back(Op(name, start));
 
     return size;
   }
 
   void end_op(int id) {
-    double end = MPI_Wtime();
+    cudaEvent_t end;
+    cudaEventCreate(&end);
+    float timestamp;
+    cudaEventElapsedTime(&timestamp, state[id].start, end);
 
     state[id].end = end;
-    state[id].timestamp = (end - state[id].start) * 1000;
+    state[id].timestamp = (double) timestamp;
   }
 
   void print_bench() {

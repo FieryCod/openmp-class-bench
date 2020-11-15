@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import sys
+import os
 
 sys.argv[1]
 
@@ -25,3 +26,10 @@ plt.plot(ds.columns, abs(ds.T[0] / ds.T[0][1]), 'b')
 plt.xlabel("Liczba procesorów")
 plt.ylabel("Przyspieszenie")
 plt.savefig('resources/' + str(sys.argv[1]) + "2.png")
+
+os.rename(r'resources/bench_output1.csv',r'resources/bench_' + str(sys.argv[1]) + '_output1.csv')
+os.rename(r'resources/bench_output2.csv',r'resources/bench_' + str(sys.argv[1]) + '_output2.csv')
+os.rename(r'resources/bench_output3.csv',r'resources/bench_' + str(sys.argv[1]) + '_output3.csv')
+os.rename(r'resources/bench_output4.csv',r'resources/bench_' + str(sys.argv[1]) + '_output4.csv')
+os.rename(r'resources/bench_output5.csv',r'resources/bench_' + str(sys.argv[1]) + '_output5.csv')
+os.rename(r'resources/bench_output6.csv',r'resources/bench_' + str(sys.argv[1]) + '_output6.csv')
