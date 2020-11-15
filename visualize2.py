@@ -23,7 +23,7 @@ plt.ylabel("Czas wykonania [ms]")
 plt.savefig('resources/' + str(sys.argv[1]) + "B1.png")
 
 plt.figure(1)
-plt.plot([12260, 13260, 14260, 15260, 16260, 17260], abs(ds.T[0] / ds.T[0][1]), 'b')
+plt.plot([12260, 13260, 14260, 15260, 16260, 17260], abs(ds.T[0] / ds.T[0][1]) * 100, 'b')
 plt.xlabel("Blocki")
 plt.ylabel("Przyspieszenie")
 plt.savefig('resources/' + str(sys.argv[1]) + "B2.png")

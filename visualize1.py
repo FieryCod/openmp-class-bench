@@ -22,7 +22,7 @@ plt.ylabel("Czas wykonania [ms]")
 plt.savefig('resources/' + str(sys.argv[1]) + "T1.png")
 
 plt.figure(1)
-plt.plot([20, 40, 60, 80, 100, 120], abs(ds.T[0] / ds.T[0][1]), 'b')
+plt.plot([20, 40, 60, 80, 100, 120], abs(ds.T[0] / ds.T[0][1]) * 100, 'b')
 plt.xlabel("Thready")
 plt.ylabel("Przyspieszenie")
 plt.savefig('resources/' + str(sys.argv[1]) + "T2.png")
