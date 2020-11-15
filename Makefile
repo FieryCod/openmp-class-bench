@@ -27,5 +27,5 @@ knn: src/knn.cu
 
 run_knn: knn
 	@chmod +x knn
-	@./knn "resources/normalized.csv" $(THREADS) $(BLOCKS) $(TB_SWITCH)
+	@./knn "resources/skin1.csv" $(THREADS) $(BLOCKS) $(TB_SWITCH)
 	@rm -Rf knn

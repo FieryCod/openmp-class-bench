@@ -1,4 +1,4 @@
-//#include "Bench.h"
+#include "Bench.h"
 #include "rapidcsv.h"
 #include <fstream>
 #include <iostream>
@@ -18,6 +18,7 @@ static void HandleError(cudaError_t err, const char *file, int line) {
         exit(EXIT_FAILURE);
     }
 }
+
 #define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__))
 
 struct nearestPointRow {
@@ -55,20 +56,6 @@ namespace knn {
     }
     //TODO add other distance calculations
 
-    __device__ void
-    checkData(nearestPointRow *nearestPoint, unsigned startIndx, const double distance, const double value,
-              const int neighbours) {
-        for (int i = 0; i < neighbours; ++i) {
-            if (nearestPoint[startIndx + i].distance > distance) {
-                for (int j = (neighbours - 1); j > i; --j) {
-                    nearestPoint[startIndx + j] = nearestPoint[startIndx + j - 1];
-                }
-                nearestPoint[startIndx + i].distance = distance;
-                nearestPoint[startIndx + i].value = value;
-            }
-        }
-    }
-
     double getGreatestValue(nearestPointRow *nearestPoint, unsigned neighbours) {
         map<double, int> countMap;
 
@@ -88,36 +75,34 @@ namespace knn {
         return best;
     }
 
-    __global__ void
-    process(double *learnData, unsigned learnDataSize, unsigned learnDataRows, nearestPointRow *nearestPoint,
-            unsigned nearestPointSize, unsigned nearestPointRows, double *testData, unsigned perThread,
-            unsigned short neighbours = 1) {
-        unsigned index = blockIdx.x * blockDim.x + threadIdx.x;
-        unsigned stride = blockDim.x * gridDim.x;
-        unsigned reali, npi = threadIdx.x * gridDim.x + blockIdx.x;
-        for (unsigned i = index; i < learnDataSize; i += stride) {
-            reali = i * learnDataSize / learnDataRows;
-            knn::checkData(nearestPoint, npi, knn::euqlidesDistance(testData, &learnData[reali], neighbours),
-                           learnData[reali + 3],
-                           neighbours);
-        }
+    __global__ void process(double *learnData, unsigned learnDataSize, unsigned learnDataRows,
+                            nearestPointRow *nearestPoint, unsigned nearestPointSize, double *testData,
+                            unsigned short neighbours = 1) {
+        unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
 
+        if (index < learnDataRows) {
+            unsigned realIndex = index * learnDataSize / learnDataRows;
+            nearestPoint[index].distance =
+                    knn::euqlidesDistance(testData, &learnData[realIndex], neighbours);
+            nearestPoint[index].value = *(learnData + realIndex + 3);
+        }
     }
 
-    __host__ __device__ void sortNearestPoint(nearestPointRow *nearestPointsInput,
-                                              unsigned indexStart, unsigned indexEnd) {
-        nearestPointRow temp;
-        for (unsigned i = indexStart + 1; i < indexEnd; ++i) {
-            if (nearestPointsInput[i - 1].distance > nearestPointsInput[i].distance) {
-                temp = nearestPointsInput[i - 1];
-                nearestPointsInput[i - 1] = nearestPointsInput[i];
-                nearestPointsInput[i] = temp;
+    __host__ __device__ void getCloseNeighbours(nearestPointRow *nearestPointsInput, nearestPointRow *closeNeighbourList,
+                                                unsigned indexStart, unsigned indexEnd, unsigned short neighbours) {
+        for (unsigned short i = 0; i < neighbours; ++i) {
+            closeNeighbourList[i].distance = numeric_limits<double>::max();
+        }
 
-                for (int j = i - 1; j > indexStart; --j) {
-                    if (nearestPointsInput[j - 1].distance > nearestPointsInput[j].distance) {
-                        temp = nearestPointsInput[j - 1];
-                        nearestPointsInput[j - 1] = nearestPointsInput[j];
-                        nearestPointsInput[j] = temp;
+        nearestPointRow temp;
+        for (unsigned i = indexStart; i < indexEnd; ++i) {
+            if (closeNeighbourList[neighbours - 1].distance > nearestPointsInput[i].distance) {
+                closeNeighbourList[neighbours - 1] = nearestPointsInput[i];
+                for (unsigned short j = neighbours - 2; j >= 0; --j) {
+                    if (closeNeighbourList[j + 1].distance < closeNeighbourList[j].distance) {
+                        temp = closeNeighbourList[j + 1];
+                        closeNeighbourList[j + 1] = closeNeighbourList[j];
+                        closeNeighbourList[j] = temp;
                     } else
                         break;
                 }
@@ -125,61 +110,30 @@ namespace knn {
         }
     }
 
-    __global__ void sortNearestPointRun(nearestPointRow *nearestPointsInput, unsigned perThread, unsigned size) {
-        unsigned stride = blockDim.x * gridDim.x;
-        int start = threadIdx.x * perThread * 2 + blockIdx.x * perThread;
-        sortNearestPoint(nearestPointsInput, start, min(size, start + perThread));
-    }
-
-    int compare(const nearestPointRow* a, const nearestPointRow* b){
-        if( a->distance > b->distance )
-            return - 1;
-
-        if( a->distance < b->distance)
-            return 1;
-
-        return 0;
-    }
-
-    double
-    testRecord(double *dev_learnData, nearestPointRow *dev_nearestPointReturn, nearestPointRow *nearestPointInitial,
-               array<double, 4> testData, unsigned dSize, unsigned dRows, unsigned npSize, unsigned npRows,
-               int numBlocks, int blockSize, unsigned perThread, unsigned short neighbours = 1) {
+    double testRecord(double *dev_learnData, nearestPointRow *dev_nearestPointReturn, nearestPointRow *nearestPointInitial,
+                      array<double, 4> testData, unsigned dSize, unsigned dRows, unsigned npSize, int blocks, int threads,
+                      unsigned short neighbours = 1) {
         double *dev_test;
-        HandleError(cudaMalloc(&dev_test, 4 * sizeof(double)));
-        HandleError(cudaMemcpy(dev_test, testData.data(), 4 * sizeof(double), cudaMemcpyHostToDevice));
+        HANDLE_ERROR(cudaMalloc(&dev_test, 4 * sizeof(double)));
+        HANDLE_ERROR(cudaMemcpy(dev_test, testData.data(), 4 * sizeof(double), cudaMemcpyHostToDevice));
 
-        HandleError(cudaMemcpy(dev_nearestPointReturn, nearestPointInitial, npSize * sizeof(nearestPointRow),
-                                   cudaMemcpyHostToDevice));
+        HANDLE_ERROR(cudaMemcpy(dev_nearestPointReturn, nearestPointInitial, npSize * sizeof(nearestPointRow),
+                                cudaMemcpyHostToDevice));
 
-        knn::process<<<numBlocks, blockSize>>>(dev_learnData, dSize, dRows, dev_nearestPointReturn, npSize, npRows,
-                dev_test, perThread, neighbours);
+        knn::process<<<blocks, threads>>>(dev_learnData, dSize, dRows, dev_nearestPointReturn, npSize,
+                dev_test, neighbours);
         cudaDeviceSynchronize();
 
         nearestPointRow *nearestPointResult, *nearestPointResult2;
-        unsigned tasksPerThread = neighbours * 200;
-        unsigned numBlocks1 = ((npSize + tasksPerThread - 1) / tasksPerThread + blockSize - 1) / blockSize;;
-
-        sortNearestPointRun<<<numBlocks, numBlocks1>>>(dev_nearestPointReturn, tasksPerThread, npSize);
-        nearestPointResult2 = new nearestPointRow[numBlocks * blockSize * neighbours];
+        nearestPointResult2 = new nearestPointRow[neighbours];
         nearestPointResult = new nearestPointRow[npSize];
 
-        cudaDeviceSynchronize();
+        HANDLE_ERROR(cudaMemcpy(nearestPointResult, dev_nearestPointReturn, npSize * sizeof(nearestPointRow),
+                                cudaMemcpyDeviceToHost));
 
-        HandleError(
-                cudaMemcpy(nearestPointResult, dev_nearestPointReturn, npSize * sizeof(nearestPointRow),
-                           cudaMemcpyDeviceToHost));
+        getCloseNeighbours(nearestPointResult, nearestPointResult2, 0, npSize, neighbours);
 
-        for(unsigned irow = 0, npr2i = 0; irow < npSize; irow += perThread * neighbours){
-            for (unsigned in = 0; in < neighbours; ++in) {
-                nearestPointResult2[npr2i] = nearestPointResult[irow + in];
-                ++npr2i;
-            }
-        }
-
-        sortNearestPoint(nearestPointResult2, 0, numBlocks * blockSize * neighbours);
-
-        double res = getGreatestValue(nearestPointResult, neighbours);
+        double res = getGreatestValue(nearestPointResult2, neighbours);
         delete[] nearestPointResult;
         delete[] nearestPointResult2;
         cudaFree(dev_test);
@@ -240,12 +194,7 @@ int main(int argc, char *argv[]) {
    */
     std::unique_ptr<Bench> bencher = std::make_unique<Bench>(Bench());
 
-
-    int tasksPerThread = neighbours * 10;
-    int blockSize = 1024;//512
-    unsigned numBlocks = ((learnRows + tasksPerThread - 1) / tasksPerThread + blockSize - 1) / blockSize;
-
-    const unsigned npSize = blockSize * numBlocks * neighbours, npRows = blockSize * numBlocks;
+    const unsigned npSize = learnRows;
     nearestPointRow *nearestPoint = new nearestPointRow[npSize];
     nearestPointRow *dev_nearestPoint;
 
@@ -253,39 +202,35 @@ int main(int argc, char *argv[]) {
         nearestPoint[i].distance = numeric_limits<double>::max();
     }
 
-    HandleError(cudaMalloc(&dev_learn, learnSize * sizeof(double)));
-    HandleError(cudaMalloc(&dev_nearestPoint, npSize * sizeof(nearestPointRow)));
+    HANDLE_ERROR(cudaMalloc(&dev_learn, learnSize * sizeof(double)));
+    HANDLE_ERROR(cudaMalloc(&dev_nearestPoint, npSize * sizeof(nearestPointRow)));
 
-    HandleError(cudaMemcpy(dev_learn, learn, learnSize * sizeof(double), cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(dev_learn, learn, learnSize * sizeof(double), cudaMemcpyHostToDevice));
 
-    cout<<blockSize<<"x"<<numBlocks<<endl;
     for (int i = 0; i < 30; ++i) {
         int op_id = bencher->add_op(std::to_string(i));
 
         unsigned correct = 0;
         for (auto &testRow: test) {
-
             if (knn::testRecord(dev_learn, dev_nearestPoint, nearestPoint, testRow, learnSize, learnRows, npSize,
-                                npRows, numBlocks, blockSize, tasksPerThread, neighbours) == testRow[3])
+                                BLOCKS, THREADS, neighbours) == testRow[3])
                 ++correct;
         }
 
         bencher->end_op(op_id);
         cout << "Accuracy: " << (float) correct / test.size() * 100. << "%" << endl;
-        cout << "\nRUN: " << i + 1 << ", TIME: " << bencher->op_timestamp(op_id) << "ms";
+        cout << "RUN: " << i + 1 << ", TIME: " << bencher->op_timestamp(op_id) << "ms"<<endl<<endl;
     }
 
 //        spit_csv("knn-skin.csv", output, vector < string > {"R", "G", "B", "SKIN"});
 
     bencher->csv_output((TB_SWITCH == 1 ? "T" : "B") + std::string("_knn") +
-                        (TB_SWITCH == 1 ? std ::to_string(THREADS) : std::to_string(BLOCKS)));
+                        (TB_SWITCH == 1 ? std::to_string(THREADS) : std::to_string(BLOCKS)));
 
-    //***************************************************************************************/
-    //***************************************************************************************/
     delete[] learn;
     delete[] nearestPoint;
-    HandleError(cudaFree(dev_learn));
-    HandleError(cudaFree(dev_nearestPoint));
+    HANDLE_ERROR(cudaFree(dev_learn));
+    HANDLE_ERROR(cudaFree(dev_nearestPoint));
 
     return 0;
 }
