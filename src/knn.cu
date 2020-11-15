@@ -88,7 +88,7 @@ namespace knn {
         }
     }
 
-    __host__ __device__ void getCloseNeighbours(nearestPointRow *nearestPointsInput, nearestPointRow *closeNeighbourList,
+    void getCloseNeighbours(nearestPointRow *nearestPointsInput, nearestPointRow *closeNeighbourList,
                                                 unsigned indexStart, unsigned indexEnd, unsigned short neighbours) {
         for (unsigned short i = 0; i < neighbours; ++i) {
             closeNeighbourList[i].distance = numeric_limits<double>::max();
@@ -98,7 +98,7 @@ namespace knn {
         for (unsigned i = indexStart; i < indexEnd; ++i) {
             if (closeNeighbourList[neighbours - 1].distance > nearestPointsInput[i].distance) {
                 closeNeighbourList[neighbours - 1] = nearestPointsInput[i];
-                for (unsigned short j = neighbours - 2; j >= 0; --j) {
+                for (int j = neighbours - 2; j >= 0; --j) {
                     if (closeNeighbourList[j + 1].distance < closeNeighbourList[j].distance) {
                         temp = closeNeighbourList[j + 1];
                         closeNeighbourList[j + 1] = closeNeighbourList[j];
