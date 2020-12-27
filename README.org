@@ -31,44 +31,21 @@
 #+end_export
 
 * Wprowadzenie
-  Celem projektu jest implementacja popularnych algorytmów do przetwarzania danych, a także wykonanie i opis pomiaru czasowago wariantów algorytmów bez/z zrównolegleniem operując na środowisku MPI. \\
+  Celem projektu jest implementacja algorytmu "Eliminacji obserwacji odstających" do wstępnego przetwarzania danych, a także wykonanie i udokumentowanie pomiaru czasowago trzech wariantów programu. \\
 
   \noindent
-  W projekcie za wariant *A* uznaje się wersję algorytmu zrównoleglonego w c++.
-  Za wersję *B* uznaje się wersję Pythonową algorytmu. \\
+  1. Zrównoleglenie programu za pomocą OpenMPI
+  2. Zrównoleglenie programu za pomocą OpenOMP
+  3. Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
+** Metoda pomiaru
+Program dla każdego wariantu został uruchomiony trzydzieści razy na platformie uczelnianej do obliczeń rozproszonych w celu zapewnienia poprawności i statystycznej dokładności wykonywach pomiarów. Pomiary czasowe podawane są dla każdego wariantu w jednoste ~ms~ (milisekundy)
 
-  \noindent
-  Pomiary zamieszczone w dokumencie zostały wykonane na podstawie uśrednienia czasu realizacji trzydziestu obiegów programu. \\
 
-  \noindent
-  W ramach projektu zaimplementowano następujące algorytmy:
-  - algorytm standaryzacji min-max
-  - algorytm standaryzacji rozkładem normalnym
-  - algorytm najbliższych sąsiadów (KNN)
-
-  \noindent
-  Algorytmy porównano na przykładowym zbiorze danych opisanym w następnym rozdziale.
 
   #+begin_export latex
     \clearpage
   #+end_export
-* Informacje o sprzęcie na którym wykonano pomiar
-  \noindent
-  Model sprzętu:
-  - Dell XPS 15 9570
-
-  \noindent
-  Procesor:
-  - 12 x Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz, 3933 MHz
-
-  \noindent
-  Karta graficzna:
-  - Nvidia GP107M GeForce GTX 1050 Ti Mobile
-
-  #+begin_export latex
-    \clearpage
-  #+end_export
-* Opis zbióru danych
+** Opis zbióru danych
   \noindent
   Dane pochodzą z archiwum [[https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation][uci]]. Zawierają próbki kolorów G, R, B z wycinków obrazków twarzy ludzi w tym:
   - starych
@@ -77,7 +54,7 @@
   - o różnej rasie i kolorze skóry
 
   \noindent
-  Sumaryczna liczba próbek wynosi 245057 z czego tylko 50859 próbek zawiera w sobie kolory twarzy. W danych istnieją też wycinki z różnych obrazków nie przedstawiających ludzi. \\
+  Sumaryczna liczba próbek wynosi 14 799 994. W danych istnieją też wycinki z różnych obrazków nie przedstawiających ludzi. \\
 
   \noindent
   Oryginalnie kolumna ostatnia zawierająca informację o przynależności kolorów G, R, B do twarzy miała następującą postać: \\
@@ -93,8 +70,21 @@
   2. Zamieniono oznaczenie *SKIN* na:
      - ~0~ - nie twarz
      - ~1~ - twarz
+* Informacje o sprzęcie na którym wykonano pomiar
+  \noindent
+  Model sprzętu:
+  - Dell XPS 15 9570
+
+  \noindent
+  Procesor:
+  - 12 x Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz, 3933 MHz
+
+  \noindent
+  Karta graficzna:
+  - Nvidia GP107M GeForce GTX 1050 Ti Mobile
+
   #+begin_export latex
-  \clearpage
+    \clearpage
   #+end_export
 * Implementacja
 ** Standaryzacja Min-Max

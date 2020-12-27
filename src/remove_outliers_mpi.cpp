@@ -157,14 +157,14 @@ int main(int argc, char *argv[]) {
         G_new.resize(COLUMN_SIZE);
         B_new.resize(COLUMN_SIZE);
 
-        auto output = std::vector < std::vector < double >> {
+        auto output = std::vector<std::vector<double>> {
                 R_new,
                 G_new,
                 B_new,
                 doc.GetColumn<double>("SKIN")
         };
 
-        spit_csv("remove-outliers-skin.csv", output, std::vector < std::string > {"R", "G", "B", "SKIN"});
+        // spit_csv("remove-outliers-skin.csv", output, std::vector < std::string > {"R", "G", "B", "SKIN"});
 
         bencher->csv_output(std::to_string(processes));
     }

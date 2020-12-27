@@ -3,7 +3,6 @@
 #include <map>
 #include <memory>
 #include <fstream>
-#include <mpi.h>
 #include <set>
 #include <string>
 #include <vector>
@@ -20,22 +19,30 @@ struct Op {
   }
 };
 
+
+double get_time() {
+    return std::chrono::time_point_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now())
+            .time_since_epoch()
+            .count();
+}
+
 class Bench {
 public:
   int add_op(std::string name) {
     ops_names.insert(name);
     int size = state.size();
 
-    state.push_back(Op(name, MPI_Wtime()));
+    state.push_back(Op(name, get_time()));
 
     return size;
   }
 
   void end_op(int id) {
-    double end = MPI_Wtime();
+    double end = get_time();
 
     state[id].end = end;
-    state[id].timestamp = (end - state[id].start) * 1000;
+    state[id].timestamp = (end - state[id].start);
   }
 
   void print_bench() {
