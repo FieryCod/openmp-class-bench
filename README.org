@@ -37,15 +37,39 @@
   1. Zrównoleglenie programu za pomocą OpenMPI
   2. Zrównoleglenie programu za pomocą OpenOMP
   3. Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
-** Metoda pomiaru
+* Opis badanego algorytmu
+Algorytm "eliminacji obserwacji odstających" korzysta z reguły trzech sigm, która stanowi:
+
+#+BEGIN_QUOTE
+Dla zmiennej, która ma rozkład normalny bądź zbliżony do rozkładu normalnego można wyznaczyć ile obserwacji znajduje się w pewnym zakresie mierzonym odchyleniem standardowym (od średniej).
+
+Można zaobserwować, że:
+- 68,2% obserwacji znajduje się w zakresie pomiędzy +/- 1 odchylenie standardowe od średniej
+- 95,4% obserwacji znajduje się w zakresie pomiędzy +/- 2 odchylenia standardowe od średniej
+- 99,7% obserwacji znajduje się w zakresie pomiędzy +/- 3 odchylenia standardowe od średniej
+- 99,994% obserwacji znajduje się w zakresie pomiędzy +/- 4 odchylenia standardowe od średniej
+#+END_QUOTE
+
+\noindent
+Zważywszy na powyższe w projekcie przyjęliśmy za wartości odstające wszystkie te, które odbiegają od średniej o +/- 3 odchylenia standardowe. Wartości odstające nie są usuwane ze zbioru, by nie powodować dziur. Za wartości odstające przyjęliśmy wartość średnią ze zbioru.
+
+Operacje odpowiadające za eliminację i podmianę wartości na średnią prezentują się następująco:
+
+#+BEGIN_SRC c++ :eval no
+for (auto x : xv) {
+  double zscore = (x - mean_t) / std_t;
+
+  if (zscore < 3) {
+    nxv_private.push_back(x);
+  } else {
+    nxv_private.push_back(mean_t);
+  }
+}
+#+END_SRC
+
+* Metoda wykonywania pomiaru
 Program dla każdego wariantu został uruchomiony trzydzieści razy na platformie uczelnianej do obliczeń rozproszonych w celu zapewnienia poprawności i statystycznej dokładności wykonywach pomiarów. Pomiary czasowe podawane są dla każdego wariantu w jednoste ~ms~ (milisekundy)
-
-
-
-  #+begin_export latex
-    \clearpage
-  #+end_export
-** Opis zbióru danych
+* Opis zbióru danych
   \noindent
   Dane pochodzą z archiwum [[https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation][uci]]. Zawierają próbki kolorów G, R, B z wycinków obrazków twarzy ludzi w tym:
   - starych
@@ -54,7 +78,7 @@ Program dla każdego wariantu został uruchomiony trzydzieści razy na platformi
   - o różnej rasie i kolorze skóry
 
   \noindent
-  Sumaryczna liczba próbek wynosi 14 799 994. W danych istnieją też wycinki z różnych obrazków nie przedstawiających ludzi. \\
+  Sumaryczna liczba próbek wynosi 14 799 994. Rozmiar pliku wynosi 191MB. W danych istnieją też wycinki z różnych obrazków nie przedstawiających ludzi. \\
 
   \noindent
   Oryginalnie kolumna ostatnia zawierająca informację o przynależności kolorów G, R, B do twarzy miała następującą postać: \\
@@ -70,152 +94,20 @@ Program dla każdego wariantu został uruchomiony trzydzieści razy na platformi
   2. Zamieniono oznaczenie *SKIN* na:
      - ~0~ - nie twarz
      - ~1~ - twarz
-* Informacje o sprzęcie na którym wykonano pomiar
-  \noindent
-  Model sprzętu:
-  - Dell XPS 15 9570
+* Pomiary
+1. Zrównoleglenie programu za pomocą OpenMPI
+   Opis dla Gathera i same wyniki dla mpi
 
-  \noindent
-  Procesor:
-  - 12 x Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz, 3933 MHz
+2. Zrównoleglenie programu za pomocą OpenOMP
 
-  \noindent
-  Karta graficzna:
-  - Nvidia GP107M GeForce GTX 1050 Ti Mobile
+3. Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
 
-  #+begin_export latex
-    \clearpage
-  #+end_export
-* Implementacja
-** Standaryzacja Min-Max
-   Klasa ~MinMax~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces standaryzacji wartości w danej kolumnie do przedziału ~[0, 1]~. \\
+*Dla wszystkich pomiarów wykresy prezentują się następująco:*
+#+CAPTION: Pomiar dla wszystkich wariantów z skalą logatytmiczną
+[[./resources/all.png]]
 
-   \noindent
-   Standaryzacja ~min-max~ jest opisana wzorem
-   #+begin_export latex
-   \begin{equation}
-   f(x) = {\frac{x - min(x)}{max(x) - min(x)}}
-   \end{equation}
-   #+end_export
+#+CAPTION: Pomiar dla wszystkich wariantów
+[[./resources/all1.png]]
 
-*** Pomiar A
-    #+BEGIN_SRC sh :results none :exports none :eval no
-      make PROCESSES=1 run_min_max && \
-          make PROCESSES=2 run_min_max && \
-          make PROCESSES=3 run_min_max && \
-          make PROCESSES=4 run_min_max && \
-          make PROCESSES=5 run_min_max && \
-          make PROCESSES=6 run_min_max
-    #+end_src
 
-    #+CAPTION: Zależność czasu wykonania od liczby procesorów
-    [[./resources/min_max1.png]]
-
-    #+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
-    [[./resources/min_max2.png]]
-
-    #+BEGIN_SRC sh :results none :exports none :eval no
-      python visualize.py min_max
-    #+end_src
-*** Pomiar B
-    #+BEGIN_SRC sh :results output :exports results :eval no
-      python min_max.py
-    #+end_src
-
-    #+RESULTS:
-    : Mean of elapsed time for 30 execs took 75.01101126665617 ms
-
-    #+begin_export latex
-    \clearpage
-    #+end_export
-** Standaryzacja rozkładem normalnym
-   Klasa ~StandardScaler~ zdefiniowana w pliku ~src/MinMax.cpp~ realizuje proces standaryzacji wartości w danej kolumnie do rozkładu normalnego ~N(0,1)~.
-   Średnia wartość oczekiwana jest równa 0, a odchylenie standardowe wynosi 1. \\
-
-   #+begin_export latex
-    \begin{equation}
-    \[Z = \frac{X-m}{\sigma} \sim N(0,1)\]
-    \end{equation}
-   #+end_export
-
-*** Pomiar A
-    #+BEGIN_SRC sh :results none :exports none :eval no
-      make PROCESSES=1 run_standard_scaler && \
-          make PROCESSES=2 run_standard_scaler && \
-          make PROCESSES=3 run_standard_scaler && \
-          make PROCESSES=4 run_standard_scaler && \
-          make PROCESSES=5 run_standard_scaler && \
-          make PROCESSES=6 run_standard_scaler
-    #+end_src
-
-    #+CAPTION: Zależność czasu wykonania od liczby procesorów
-    [[./resources/standard_scaler1.png]]
-
-    #+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
-    [[./resources/standard_scaler2.png]]
-
-    #+BEGIN_SRC sh :results none :exports none :eval no
-      python visualize.py standard_scaler
-    #+end_src
-*** Pomiar B
-    #+BEGIN_SRC sh :results output :exports results :eval no
-      python3 standard_scaler.py
-    #+end_src
-
-    #+RESULTS:
-    : Mean of elapsed time for 30 execs took 83.95475529996475 ms
-
-    #+begin_export latex
-    \clearpage
-    #+end_export
-** Klasyfikacja najblizszymi sąsiadami
-   Klasa ~Knn~ zdefiniowana w pliku ~src/knn.cpp~ realizuje proces klasyfikacji przy użyciu algorytmu najbliższych sąsiadów. Dane na dwa zbiory, testowy (20%) i trenujący (80%), a do klasyfikacji używanych jest 5 sąsiadów, przy użyciu metryki euklidesowej. \\
-
-   \noindent
-   Liczba rekordów została zmniejszona do 5000.
-
-   #+begin_export latex
-    d(x) = \sqrt{\sum\limits_{i=1}^n(x_{iA}-x_{iB})^2} =\text{Odległość Euklidesowa}
-   #+end_export
-
-*** Pomiar A
-    #+BEGIN_SRC sh :results none :exports none :eval no
-      make PROCESSES=1 run_knn && \
-          make PROCESSES=2 run_knn && \
-          make PROCESSES=3 run_knn && \
-          make PROCESSES=4 run_knn && \
-          make PROCESSES=5 run_knn && \
-          make PROCESSES=6 run_knn
-    #+end_src
-
-    #+BEGIN_SRC sh :results none :exports none :eval no
-      python visualize.py knn
-    #+end_src
-
-    #+CAPTION: Zależność czasu wykonania od liczby procesorów
-    [[./resources/knn1.png]]
-
-    #+CAPTION: Zależność przyspieszenia wykonania od liczby procesorów
-    [[./resources/knn2.png]]
-
-*** Pomiar B
-    #+BEGIN_SRC sh :results output :exports results :eval no
-      python3 knn.py
-    #+end_src
-
-    #+RESULTS:
-    : Total time  0.1096498966217041
-    : Acurancy  0.996996996996997
-
-    #+begin_export latex
-      \clearpage
-    #+end_export
-* Wnioski
-  \noindent
-  Obserwując pomiary można zauważyć, iż wersja bez zastosowania ~OpenMP~ dla operacji cząstkowych budujących rozwiązanie końcowe jest około dwa razy wolniejsza od swojego zrównoleglonego odpowiednika. \\
-
-  \noindent
-  Przy tak małym zbiorze danych różnice jednak nie są znaczące. Zatem OpenMP jest jak najbardziej przydatne, ale tylko przy procesowaniu znaczącej ilości danych. \\
-
-  \noindent
-  *Wersje Pythonowe są 2 razy szybsze z oczywistych względów* \\
+* Podsumowanie

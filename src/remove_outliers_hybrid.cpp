@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
 
         // spit_csv("remove-outliers-skin.csv", output, std::vector < std::string > {"R", "G", "B", "SKIN"});
 
-        bencher->csv_output(std::to_string(processes));
+        bencher->csv_output("hybrid");
     }
 
     MPI_Finalize();

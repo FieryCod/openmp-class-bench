@@ -9,7 +9,7 @@ remove_outliers_mpi: src/remove_outliers_mpi.cpp
 
 run_remove_outliers_mpi: remove_outliers_mpi
 	@chmod +x remove_outliers_mpi
-	@mpirun -np $(PROCESSES) remove_outliers_mpi "resources/skin.csv"
+	@mpirun -np $(PROCESSES) remove_outliers_mpi "../skin.csv"
 	@rm -Rf remove_outliers_mpi
 
 remove_outliers_omp: src/remove_outliers_omp.cpp
@@ -17,7 +17,7 @@ remove_outliers_omp: src/remove_outliers_omp.cpp
 	g++ -fopenmp src/remove_outliers_omp.cpp -o remove_outliers_omp
 
 run_remove_outliers_omp: remove_outliers_omp
-	@./remove_outliers_omp "/home/fierycod/skin.csv"
+	@./remove_outliers_omp "../skin.csv"
 	@rm -Rf remove_outliers_omp
 
 remove_outliers_hybrid: src/remove_outliers_hybrid.cpp
@@ -25,5 +25,5 @@ remove_outliers_hybrid: src/remove_outliers_hybrid.cpp
 
 run_remove_outliers_hybrid: remove_outliers_hybrid
 	@chmod +x remove_outliers_hybrid
-	@mpirun -np $(PROCESSES) remove_outliers_hybrid "resources/skin.csv"
+	@mpirun -np $(PROCESSES) remove_outliers_hybrid "../skin.csv"
 	@rm -Rf remove_outliers_hybrid
