@@ -12,3 +12,6 @@ standard_scaler-skin-py.csv
 resources/bench_output*
 remove_outliers-skin.csv
 resources/skin.csv
+.auctex-auto
+.minted-README
+_minted-README
