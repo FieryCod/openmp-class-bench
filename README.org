@@ -1,4 +1,4 @@
-#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMPI
+\usepackage{ulem}\usepackage{ulem}\usepackage{ulem}#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMPI
 #+author: Karol Wójcik, Krzysztof Swałdek
 #+date: 2020-10-14, Wtorek
 
@@ -176,10 +176,141 @@ Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów d
 |---------+---------+------+------|
 | Mediana | Średnia | NKCW | NDCW |
 |---------+---------+------+------|
-|     605 |   616   |  585 |  816 |
+|   1101  |  1167   | 918  | 1899 |
 |---------+---------+------+------|
 - NKCW - najkrótszy czas wykonania
 - NDCW - najdłuższy czas wykonania
+
+** Zrównoleglenie programu za pomocą OpenOMP
+
+Zbiór danych z pliku podanego jako wartość parametru wejsciowego typu string, odczytywane są pokolei kolumny (~R~, ~G~, ~B~), z natychmiastowym wywołaniem funkcji eliminacji obserwacji odstających. Następnie w zrównoleglony sposób jest obliczana średnia.
+
+#+begin_src c++ :eval no
+#pragma omp parallel for schedule(runtime)
+    for (auto x : xv) {
+      sum += x;
+    }
+#+END_SRC
+
+Dalszym krokiem jest przejście do sedna algorytmu eliminacji obserwacji odstających, gdzie sama, operacja jest wykonywana równolegle przy wykorzystaniu ~#pragma omp parallel~, a dodatkowo jest dzielona na kolejne części za pomocą ~#pragma omp for~. Do podziału iteracji użyto dyrektywy ~schedule~ z wartością ~runtime~. Po wykonaniu się algorytmu, następuje sekcja krytyczna zwracająca wyniki.
+
+#+begin_src c++ :eval no
+#pragma omp parallel
+    {
+      std::vector<double> nxv_private;
+
+      #pragma omp for schedule(runtime) nowait
+      for (auto x : xv) {
+        double zscore = (x - mean_t) / std_t;
+
+        if (zscore < 3) {
+          nxv_private.push_back(x);
+        } else {
+          nxv_private.push_back(mean_t);
+        }
+      }
+
+      #pragma omp critical
+      nxv.insert(nxv.end(), nxv_private.begin(), nxv_private.end());
+    }
+#+END_SRC
+
+
+@@latex: \noindent @@
+Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów dla środowiska *OpenOMP*. \\
+#+caption: Statystyka dla 30 uruchomień, wartości w ms
+#+ATTR_LaTeX: :align |c|c|c|c|
+|---------+---------+------+------|
+| Mediana | Średnia | NKCW | NDCW |
+|---------+---------+------+------|
+|  20702  | 20941   | 20289|23193 |
+|---------+---------+------+------|
+- NKCW - najkrótszy czas wykonania
+- NDCW - najdłuższy czas wykonania
+
+
+** Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
+
+Zrównoleglenie to będzie połączeniem obydwóch metod, ~MPI~ oraz ~OpenOMP~. Zbiór danych z pliku podanego jako wartość parametru wejsciowego typu string, odczytywane są trzy kolumny: ~R~, ~G~, ~B~. Następnie obliczane sa średnie przy pomocy zrównoleglenia za pomocą ~OpenOMP~.
+
+#+begin_src c++ :eval no
+    #pragma omp parallel for schedule(runtime)
+    for (auto x : xv) {
+        sum += x;
+    }
+#+END_SRC
+
+Dalszym krokiem jest inicjalizacja środowiska MPI w taki sam sposób, jak przy użyciu samego ~OpenMPI~. Później następuje poidział zbioru danych na mniejsze podzbiory, który jest realizowany za pomoca funkcji ~MPI_SCATTER~ oraz ~MPI_GATHER~.
+
+ #+begin_src c++ :eval no
+ #pragma omp parallel
+     std::vector<double> R_partition(COLUMN_PARTITION_SIZE);
+             MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, R_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+                         0, MPI_COMM_WORLD);
+ #+END_SRC
+
+
+ Wewnątrz jednego podzbioru użyty został jeszcze ~OpenOmp~.
+
+#+begin_src c++ :eval no
+#pragma omp parallel
+    {
+        std::vector<double> nxv_private;
+
+        #pragma omp for schedule(runtime) nowait
+        for (auto x : xv) {
+            double zscore = (x - mean_t) / std_t;
+
+            if (zscore < 3) {
+                nxv_private.push_back(x);
+            } else {
+                nxv_private.push_back(mean_t);
+            }
+        }
+
+        #pragma omp critical
+        nxv.insert(nxv.end(), nxv_private.begin(), nxv_private.end());
+    }
+#+END_SRC
+
+
+Na końcu zostaja zebrane dane z podprocesów do procesu głównego.
+
+#+begin_src c++ :eval no
+MPI_Gather(R_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, R_new.data(), COLUMN_PARTITION_SIZE,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#+END_SRC
+
+
+@@latex: \noindent @@
+Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów dla podejścia hybrydowego. \\
+#+caption: Statystyka dla 30 uruchomień, wartości w ms
+#+ATTR_LaTeX: :align |c|c|c|c|
+|---------+---------+------+------|
+| Mediana | Średnia | NKCW | NDCW |
+|---------+---------+------+------|
+|  668    |  673    | 624  | 766  |
+|---------+---------+------+------|
+- NKCW - najkrótszy czas wykonania
+- NDCW - najdłuższy czas wykonania
+
+
+** Podsumowanie pomiarów
+
+#+caption: Statystyka dla 30 uruchomień, wartości w ms
+#+ATTR_LaTeX: :align |c|c|c|c|c|
+|------------+---------+---------+------+------|
+| Środowisko | Mediana | Średnia | NKCW | NDCW |
+|------------+---------+---------+------+------|
+|   OpenMPI  |   1101  |  1167   | 918  | 1899 |
+|------------+---------+---------+------+------|
+|   OpenOMP  |  20702  | 20941   | 20289|23193 |
+|------------+---------+---------+------+------|
+|   Hybrid   |  668    |  673    | 624  | 766  |
+|------------+---------+---------+------+------|
+- NKCW - najkrótszy czas wykonania
+- NDCW - najdłuższy czas wykonania
+
 
 @@latex: \noindent @@
 #+caption: [MPI] Pomiar dla wszystkich wariantów z skalą logatytmiczną
@@ -188,7 +319,9 @@ Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów d
 #+caption: [MPI] Pomiar dla wszystkich wariantów bez skalowania
 [[./resources/all1.png]]
 
-** Zrównoleglenie programu za pomocą OpenOMP
 
-** Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
+
+
 * Podsumowanie
+
+Najmniej skuteczną metoda przyspieszania obliczeń okazało sie środowisko ~OpenOMP~. Zapewnia ono stosunkowo jedno z najprostszych metod zrównoleglania, gdzie na etapie projektowania programu nie trzeba mysleć o prarelizacji. Kolejne miejsce zajął ~OpenMPI~, które nestety cechuje się znacznym nakładem pracy przy zrównoleglaniu. Hybrydowe podejście okazało sie być najlepsze. Pozwala ono wykorzystać mocne strony każdego ze środowisk, przez co daje najlepsze wyniki.
