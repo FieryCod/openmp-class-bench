@@ -1,316 +1,194 @@
-Content-Type: text/enriched
-Text-Width: 80
+#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMPI
+#+author: Karol Wójcik, Krzysztof Swałdek
+#+date: 2020-10-14, Wtorek
 
-<x-color><param>#6272a4</param>#+title:</x-color> <x-color><param>#ffb86c</param>Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMPI
+#+LATEX_CLASS: article
+#+LATEX_CLASS_OPTIONS: [12pt]
+#+LATEX_HEADER: \usepackage[a4paper, inner=37.125mm, outer=33.4125mm, top=37.125mm, bottom=37.125mm, heightrounded, marginparwidth=51pt, marginparsep=17pt, headsep=24pt]{geometry}
+#+EXCLUDE_TAGS: noexport
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LaTeX_HEADER: \usepackage[T1]{fontenc}
+#+LaTeX_HEADER: \usepackage{mathpazo}
+#+LaTeX_HEADER: \linespread{1.05}
+#+LATEX_HEADER: \usepackage{setspace}
+#+LATEX_HEADER: \doublespacing
+#+LATEX_HEADER: \usepackage[polish]{babel}
+#+LATEX_HEADER: \usepackage{polski}
+#+LaTeX_HEADER: \usepackage{minted}
+#+LATEX_HEADER: \usepackage[utf8]{inputenc}
+#+LaTeX_HEADER: \usemintedstyle{emacs}
+#+LaTeX_HEADER: \newminted{common-lisp}{fontsize=\footnotesize}
+#+LATEX_HEADER: \usepackage{ragged2e}
+#+LATEX_HEADER: \usepackage{xltxtra}
+#+LaTeX_HEADER: \usepackage{pdfpages}
+#+OPTIONS: ^:{} ':t
+#+LANGUAGE: pl
+#+OPTIONS: toc:nil
 
-</x-color><x-color><param>#6272a4</param>#+author:</x-color> <x-color><param>#61bfff</param>Karol Wójcik, Krzysztof Swałdek
+#+begin_export latex
+  \clearpage \tableofcontents \clearpage
+#+end_export
 
-</x-color><x-color><param>#6272a4</param>#+date:</x-color> <x-color><param>#61bfff</param>2020-10-14, Wtorek
+#+name: setup-minted
+#+begin_src emacs-lisp :exports none :results silent :eval yes
+(setq org-latex-listings 'minted)
+(setq org-latex-minted-options
+      '(("frame" "single")
+        ("framesep" "2mm")
+        ("fontsize" "\\small")))
+(setq org-latex-to-pdf-process
+      '("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+        "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+        "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"))
+#+end_src
 
-</x-color>
+* Wprowadzenie
+  Celem projektu jest implementacja algorytmu /Eliminacji obserwacji odstających/ do wstępnego przetwarzania danych, a także wykonanie i udokumentowanie pomiaru czasowago trzech wariantów programu.
 
-<x-color><param>#8995ba</param>#+LATEX_CLASS: article</x-color>
+  @@latex: \noindent @@
+  1. Zrównoleglenie programu za pomocą OpenMPI
+  2. Zrównoleglenie programu za pomocą OpenOMP
+  3. Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
 
-<x-color><param>#8995ba</param>#+LATEX_CLASS_OPTIONS: [12pt]</x-color>
+* Opis badanego algorytmu
+Algorytm /eliminacji obserwacji odstających/ korzysta z reguły trzech sigm. Reguła ta stanowi, że:
 
-<x-color><param>#8995ba</param>#+LATEX_HEADER: </x-color><x-color><param>#ff79c6</param><x-color><param>LightGray</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>\usepackage</x-color></x-bg-color></x-color></x-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param>[</x-color></x-bg-color><x-color><param>#8995ba</param>a4paper, inner=37.125mm, outer=33.4125mm, top=37.125mm, bottom=37.125mm, heightrounded, marginparwidth=51pt, marginparsep=17pt, headsep=24pt]{geometry}</x-color>
+@@latex: \vspace{6mm} @@
+#+begin_fancyquote
+\noindent
+/*Dla zmiennej, która ma rozkład normalny bądź zbliżony do rozkładu normalnego* można wyznaczyć ile obserwacji znajduje się w pewnym zakresie mierzonym odchyleniem standardowym (od średniej)./
 
-<x-color><param>#8995ba</param>#+EXCLUDE_TAGS: noexport</x-color>
+@@latex: \vspace{3mm} @@
+\noindent
+/Można zaobserwować, że:/
+- /68,2% obserwacji znajduje się w zakresie pomiędzy +/- 1 odchylenie standardowe od średniej/
+- /95,4% obserwacji znajduje się w zakresie pomiędzy +/- 2 odchylenia standardowe od średniej/
+- /99,7% obserwacji znajduje się w zakresie pomiędzy +/- 3 odchylenia standardowe od średniej/
+- /99,994% obserwacji znajduje się w zakresie pomiędzy +/- 4 odchylenia standardowe od średniej/
+#+end_fancyquote
 
-<x-color><param>#8995ba</param>#+LATEX_HEADER: \usepackage{graphicx}</x-color>
-
-<x-color><param>#8995ba</param>#+LaTeX_HEADER: \usepackage[T1]{fontenc}</x-color>
-
-<x-color><param>#8995ba</param>#+LaTeX_HEADER: \usepackage{mathpazo}</x-color>
-
-<x-color><param>#8995ba</param>#+LaTeX_HEADER: \linespread{1.05}</x-color>
-
-<x-color><param>#8995ba</param>#+LATEX_HEADER: \usepackage{setspace}</x-color>
-
-<x-color><param>#8995ba</param>#+LATEX_HEADER: \doublespacing</x-color>
-
-<x-color><param>#8995ba</param>#+LATEX_HEADER: \usepackage[polish]{babel}</x-color>
-
-<x-color><param>#8995ba</param>#+LATEX_HEADER: \usepackage{polski}</x-color>
-
-<x-color><param>#8995ba</param>#+LaTeX_HEADER: </x-color><x-color><param>#ff79c6</param><x-color><param>LightGray</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>\usepackage</x-color></x-bg-color></x-color></x-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param>{</x-color></x-bg-color><x-color><param>#8995ba</param>minted}</x-color>
-
-<x-color><param>#8995ba</param>#+LATEX_HEADER: \usepackage[utf8]{inputenc}</x-color>
-
-<x-color><param>#8995ba</param>#+LaTeX_HEADER: \usemintedstyle{emacs}</x-color>
-<x-color><param>#8995ba</param>#+LaTeX_HEADER: \newminted{common-lisp}{fontsize=\footnotesize}</x-color>
-
-<x-color><param>#8995ba</param>#+LATEX_HEADER: \usepackage{ragged2e}</x-color>
-
-<x-color><param>#8995ba</param>#+LATEX_HEADER: \usepackage{xltxtra}</x-color>
-
-<x-color><param>#8995ba</param>#+LaTeX_HEADER: \usepackage{pdfpages}</x-color>
-
-<x-color><param>#8995ba</param>#+OPTIONS: ^:{} ':t</x-color>
-
-<x-color><param>#8995ba</param>#+LANGUAGE: pl</x-color>
-
-<x-color><param>#8995ba</param>#+OPTIONS: toc:nil</x-color>
-
-
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+begin_export latex
-
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param>  <x-color><param>LightGray</param>\clearpage</x-color> <x-color><param>LightGray</param>\tableofcontents</x-color> <x-color><param>LightGray</param>\clearpage</x-color>
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+end_export
-
-</x-color></x-bg-color>
-
-<x-color><param>#8995ba</param>#+name: setup-minted</x-color>
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+begin_src emacs-lisp :exports none :results silent :eval yes
-
-</x-color></x-bg-color><x-color><param>#61bfff</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>(</x-color></x-bg-color></x-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>#ff79c6</param>setq</x-color> org-latex-listings <x-color><param>#ff79c6</param>'</x-color><x-color><param>#8be9fd</param>minted</x-color><x-color><param>#61bfff</param>)</x-color>
-<x-color><param>#61bfff</param>(</x-color><x-color><param>#ff79c6</param>setq</x-color> org-latex-minted-options
-      <x-color><param>#ff79c6</param>'(</x-color><x-color><param>#50fa7b</param>(</x-color><x-color><param>#f1fa8c</param>"frame"</x-color> <x-color><param>#f1fa8c</param>"single"</x-color><x-color><param>#50fa7b</param>)</x-color>
-        <x-color><param>#50fa7b</param>(</x-color><x-color><param>#f1fa8c</param>"framesep"</x-color> <x-color><param>#f1fa8c</param>"2mm"</x-color><x-color><param>#50fa7b</param>)</x-color>
-        <x-color><param>#50fa7b</param>(</x-color><x-color><param>#f1fa8c</param>"fontsize"</x-color> <x-color><param>#f1fa8c</param>"\\small"</x-color><x-color><param>#50fa7b</param>)</x-color><x-color><param>#ff79c6</param>)</x-color><x-color><param>#61bfff</param>)</x-color>
-<x-color><param>#61bfff</param>(</x-color><x-color><param>#ff79c6</param>setq</x-color> org-latex-to-pdf-process
-      <x-color><param>#ff79c6</param>'(</x-color><x-color><param>#f1fa8c</param>"pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"</x-color>
-        <x-color><param>#f1fa8c</param>"pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"</x-color>
-        <x-color><param>#f1fa8c</param>"pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"</x-color><x-color><param>#ff79c6</param>)</x-color><x-color><param>#61bfff</param>)</x-color>
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+end_src
-
-</x-color></x-bg-color>
-
-<x-color><param>white</param>*</x-color><x-color><param>white</param> Wprowadzenie
-
-</x-color>  Celem projektu jest implementacja algorytmu <italic>/Eliminacji obserwacji odstających/</italic> do wstępnego przetwarzania danych, a także wykonanie i udokumentowanie pomiaru czasowago trzech wariantów programu.
-
-
-  <x-color><param>#8be9fd</param>@@latex:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
-
-  <x-color><param>#bd93f9</param>1.</x-color> Zrównoleglenie programu za pomocą OpenMPI
-
-  <x-color><param>#bd93f9</param>2.</x-color> Zrównoleglenie programu za pomocą OpenOMP
-
-  <x-color><param>#bd93f9</param>3.</x-color> Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
-
-
-<x-color><param>white</param>*</x-color><x-color><param>white</param> Opis badanego algorytmu
-
-</x-color>Algorytm <italic>/eliminacji obserwacji odstających/</italic> korzysta z reguły trzech sigm. Reguła ta stanowi, że:
-
-
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param><x-color><param>#ff79c6</param>\vspace</x-color></x-color>{</x-color></x-bg-color>6mm} <x-color><param>#8be9fd</param>@@</x-color>
-
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+begin_fancyquote
-
-</x-color></x-bg-color><x-color><param>LightGray</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>\noindent</x-color></x-bg-color></x-color>
-
-<italic>/*Dla zmiennej, która ma rozkład normalny bądź zbliżony do rozkładu normalnego* można wyznaczyć ile obserwacji znajduje się w pewnym zakresie mierzonym odchyleniem standardowym (od średniej)./</italic>
-
-
-<x-color><param>#8be9fd</param>@@latex:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param><x-color><param>#ff79c6</param>\vspace</x-color></x-color>{</x-color></x-bg-color>3mm} <x-color><param>#8be9fd</param>@@</x-color>
-
-<x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color></x-color></x-bg-color>
-
-<italic>/Można zaobserwować, że:/</italic>
-
-<x-color><param>#bd93f9</param>-</x-color> <italic>/68,2% obserwacji znajduje się w zakresie pomiędzy +/</italic>- 1 odchylenie standardowe od średniej/
-
-<x-color><param>#bd93f9</param>-</x-color> <italic>/95,4% obserwacji znajduje się w zakresie pomiędzy +/</italic>- 2 odchylenia standardowe od średniej/
-
-<x-color><param>#bd93f9</param>-</x-color> <italic>/99,7% obserwacji znajduje się w zakresie pomiędzy +/</italic>- 3 odchylenia standardowe od średniej/
-
-<x-color><param>#bd93f9</param>-</x-color> <italic>/99,994% obserwacji znajduje się w zakresie pomiędzy +/</italic>- 4 odchylenia standardowe od średniej/
-
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+end_fancyquote
-
-</x-color></x-bg-color>
-
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
+@@latex: \noindent @@
 Zważywszy na powyższe w projekcie przyjęliśmy za wartości odstające wszystkie te, które odbiegają od średniej o +/- 3 odchylenia standardowe. Wartości odstające nie są usuwane ze zbioru, by nie powodować dziur. Za wartości odstające przyjęliśmy wartość średnią ze zbioru. \\
 
-
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
+@@latex: \noindent @@
 Operacje odpowiadające za eliminację i podmianę wartości na średnią prezentują się następująco: \\
 
+#+ATTR_LATEX: :options 
+#+caption: Algorytm eliminacji obserwacji odstających
+#+BEGIN_SRC c++ -i :eval no
+for (auto x : xv) {
+  double zscore = (x - mean_t) / std_t;
 
-<x-color><param>#8995ba</param>#+ATTR_LATEX: :options </x-color>
-<x-color><param>#8995ba</param>#+caption:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>Algorytm eliminacji obserwacji odstających</x-color></x-bg-color>
+  if (zscore < 3) {
+    nxv_private.push_back(x);
+  } else {
+    nxv_private.push_back(mean_t);
+  }
+}
+#+END_SRC
 
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+BEGIN_SRC c++ -i :eval no
+@@latex: \clearpage @@
+* Metoda wykonywania pomiaru
+Program dla każdego wariantu został uruchomiony trzydzieści razy na platformie uczelnianej do obliczeń rozproszonych w celu zapewnienia poprawności i statystycznej dokładności wykonywach pomiarów. Pomiary czasowe podawane są dla każdego wariantu w jednostce ~ms~ (milisekundy). Wykorzystywana bilbioteka do przeprowadzania pomiarów to ~<std::chrono>~. Poniżej zaprezentowano klasę wykonującą pomiary:
 
-</x-color></x-bg-color><x-color><param>#ff79c6</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>for</x-color></x-bg-color></x-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param> <x-color><param>#61bfff</param>(</x-color><x-color><param>#ff79c6</param>auto</x-color> x : xv<x-color><param>#61bfff</param>)</x-color> <x-color><param>#61bfff</param>{</x-color>
-  <x-color><param>#bd93f9</param>double</x-color> zscore = <x-color><param>#ff79c6</param>(</x-color>x - mean_t<x-color><param>#ff79c6</param>)</x-color> / std_t;
+#+caption: Funkcja pobierająca aktualny czas w milisekundach
+#+BEGIN_SRC c++ :eval no
+double get_time() {
+    return std::chrono::time_point_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now())
+            .time_since_epoch()
+            .count();
+}
+#+END_SRC
 
+\clearpage
+* Opis zbióru danych
+  @@latex: \noindent @@
+  Dane pochodzą z archiwum [[https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation][uci]]. Zawierają próbki kolorów G, R, B z wycinków obrazków twarzy ludzi w tym:
+  - starych
+  - młodych
+  - w średnim wieku
+  - o różnej rasie i kolorze skóry
 
-  <x-color><param>#ff79c6</param>if</x-color> <x-color><param>#ff79c6</param>(</x-color>zscore << <x-color><param>#bd93f9</param>3</x-color><x-color><param>#ff79c6</param>)</x-color> <x-color><param>#ff79c6</param>{</x-color>
-    nxv_private.push_back<x-color><param>#50fa7b</param>(</x-color>x<x-color><param>#50fa7b</param>)</x-color>;
-  <x-color><param>#ff79c6</param>}</x-color> <x-color><param>#ff79c6</param>else</x-color> <x-color><param>#ff79c6</param>{</x-color>
-    nxv_private.push_back<x-color><param>#50fa7b</param>(</x-color>mean_t<x-color><param>#50fa7b</param>)</x-color>;
-  <x-color><param>#ff79c6</param>}</x-color>
-<x-color><param>#61bfff</param>}</x-color>
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+END_SRC
-
-</x-color></x-bg-color>
-
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\clearpage</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
-
-<x-color><param>white</param>*</x-color><x-color><param>white</param> Metoda wykonywania pomiaru
-
-</x-color>Program dla każdego wariantu został uruchomiony trzydzieści razy na platformie uczelnianej do obliczeń rozproszonych w celu zapewnienia poprawności i statystycznej dokładności wykonywach pomiarów. Pomiary czasowe podawane są dla każdego wariantu w jednostce <x-color><param>#f1fa8c</param>~ms~</x-color> (milisekundy). Wykorzystywana bilbioteka do przeprowadzania pomiarów to <x-color><param>#f1fa8c</param>~<<std::chrono>~</x-color>. Poniżej zaprezentowano klasę wykonującą pomiary:
-
-
-<x-color><param>#8995ba</param>#+caption:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>Funkcja pobierająca aktualny czas w milisekundach</x-color></x-bg-color>
-
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+BEGIN_SRC c++ :eval no
-
-</x-color></x-bg-color><x-color><param>#bd93f9</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>double</x-color></x-bg-color></x-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param> <x-color><param>#50fa7b</param>get_time</x-color><x-color><param>#61bfff</param>()</x-color> <x-color><param>#61bfff</param>{</x-color>
-    <x-color><param>#ff79c6</param>return</x-color> <x-color><param>#8be9fd</param>std</x-color>::<x-color><param>#8be9fd</param>chrono</x-color>::time_point_cast<x-color><param>#ff79c6</param><<</x-color><x-color><param>#8be9fd</param>std</x-color>::<x-color><param>#8be9fd</param>chrono</x-color>::milliseconds<x-color><param>#ff79c6</param>>(</x-color>
-            <x-color><param>#8be9fd</param>std</x-color>::<x-color><param>#8be9fd</param>chrono</x-color>::<x-color><param>#8be9fd</param>system_clock</x-color>::now<x-color><param>#50fa7b</param>()</x-color><x-color><param>#ff79c6</param>)</x-color>
-            .time_since_epoch<x-color><param>#ff79c6</param>()</x-color>
-            .count<x-color><param>#ff79c6</param>()</x-color>;
-<x-color><param>#61bfff</param>}</x-color>
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+END_SRC
-
-</x-color></x-bg-color>
-
-<x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\clearpage</x-color></x-color></x-bg-color>
-
-<x-color><param>white</param>*</x-color><x-color><param>white</param> Opis zbióru danych
-
-</x-color>  <x-color><param>#8be9fd</param>@@latex:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
-  Dane pochodzą z archiwum [[https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation][<x-color><param>#ffb86c</param>uci</x-color>]]. Zawierają próbki kolorów G, R, B z wycinków obrazków twarzy ludzi w tym:
-
-  <x-color><param>#bd93f9</param>-</x-color> starych
-
-  <x-color><param>#bd93f9</param>-</x-color> młodych
-
-  <x-color><param>#bd93f9</param>-</x-color> w średnim wieku
-
-  <x-color><param>#bd93f9</param>-</x-color> o różnej rasie i kolorze skóry
-
-
-  <x-color><param>#8be9fd</param>@@latex:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
+  @@latex: \noindent @@
   Sumaryczna liczba próbek wynosi 14 799 994. Rozmiar pliku wynosi 191MB. W danych istnieją też wycinki z różnych obrazków nie przedstawiających ludzi. Oryginalnie kolumna ostatnia zawierająca informację o przynależności kolorów G, R, B do twarzy miała następującą postać: \\
 
+  \noindent
+  *SKIN*:
+  - ~1~ - twarz
+  - ~2~ - nie twarz
 
-  <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color></x-color></x-bg-color>
-  <bold>*SKIN*</bold>:
-
-  <x-color><param>#bd93f9</param>-</x-color> <x-color><param>#f1fa8c</param>~1~</x-color> - twarz
-
-  <x-color><param>#bd93f9</param>-</x-color> <x-color><param>#f1fa8c</param>~2~</x-color> - nie twarz
-
-
-  <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color></x-color></x-bg-color>
+  \noindent
   Dane zostały poddane wstępnej obróbce:
+  1. Zamieniono kolumny tak, by odpowiadała kolejność R, G, B
+  2. Zamieniono oznaczenie *SKIN* na:
+     - ~0~ - nie twarz
+     - ~1~ - twarz
 
-  <x-color><param>#bd93f9</param>1.</x-color> Zamieniono kolumny tak, by odpowiadała kolejność R, G, B
+* Pomiary
+** Zrównoleglenie programu za pomocą OpenMPI
+Zbiór danych z pliku podanego jako wartość typu string odczytywane są trzy kolumny: ~R~, ~G~, ~B~. Następnie środowisko MPI jest inicjalizowane poprzez komendę ~MPI_INIT~ i pobrane zostają wartości odpowiadające za identyfikator procesu i liczbę dostępnych procesów. W kolejnym kroku algorytmu wyliczane zostają stałe ~COLUMN_SIZE~ oraz ~COLUMN_PARTITION_SIZE~, na których to podstawie występować będzie podział każdej z kolumny. \\
 
-  <x-color><param>#bd93f9</param>2.</x-color> Zamieniono oznaczenie <bold>*SKIN*</bold> na:
+#+caption: Wyliczenie liczebności partycji
+#+BEGIN_SRC c++ :eval no
+int COLUMN_PARTITION_SIZE = std::ceil(
+    COLUMN_SIZE / (float) processes
+);
 
-     <x-color><param>#bd93f9</param>-</x-color> <x-color><param>#f1fa8c</param>~0~</x-color> - nie twarz
+int ALL_PARTITION_COLUMN_SIZE = processes * COLUMN_PARTITION_SIZE;
+#+END_SRC
 
-     <x-color><param>#bd93f9</param>-</x-color> <x-color><param>#f1fa8c</param>~1~</x-color> - twarz
+@@latex: \noindent @@
+Podział podzbioru w kolumnie realizowany jest poprzez użycie dwóch funkcji ~MPI_SCATTER~ oraz ~MPI_GATHER~ wraz z podanymi powyżej wartościami stałych. W kodzie programu występują trzy bloki z użyciem pary ~MPI_SCATTER~ i ~MPI_GATHER~, które synchronizują procesy w obrębie bloku. \\
 
+#+caption[Podział]: Podział kolekcji na podprocesy
+#+begin_src c++ :eval no
+std::vector<double> R_partition(COLUMN_PARTITION_SIZE);
+MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+            R_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+            0, MPI_COMM_WORLD);
+#+end_src
 
-<x-color><param>white</param>*</x-color><x-color><param>white</param> Pomiary
-
-</x-color><x-color><param>#1E2029</param>*</x-color><x-color><param>white</param>*</x-color><x-color><param>white</param> Zrównoleglenie programu za pomocą OpenMPI
-
-</x-color>Zbiór danych z pliku podanego jako wartość typu string odczytywane są trzy kolumny: <x-color><param>#f1fa8c</param>~R~</x-color>, <x-color><param>#f1fa8c</param>~G~</x-color>, <x-color><param>#f1fa8c</param>~B~</x-color>. Następnie środowisko MPI jest inicjalizowane poprzez komendę <x-color><param>#f1fa8c</param>~MPI_INIT~</x-color> i pobrane zostają wartości odpowiadające za identyfikator procesu i liczbę dostępnych procesów. W kolejnym kroku algorytmu wyliczane zostają stałe <x-color><param>#f1fa8c</param>~COLUMN_SIZE~</x-color> oraz <x-color><param>#f1fa8c</param>~COLUMN_PARTITION_SIZE~</x-color>, na których to podstawie występować będzie podział każdej z kolumny. \\
-
-
-<x-color><param>#8995ba</param>#+caption:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>Wyliczenie liczebności partycji</x-color></x-bg-color>
-
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+BEGIN_SRC c++ :eval no
-
-</x-color></x-bg-color><x-color><param>#bd93f9</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>int</x-color></x-bg-color></x-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param> COLUMN_PARTITION_SIZE = <x-color><param>#8be9fd</param>std</x-color>::ceil<x-color><param>#61bfff</param>(</x-color>
-    <x-color><param>#8be9fd</param>COLUMN_SIZE</x-color> / <x-color><param>#ff79c6</param>(</x-color><x-color><param>#bd93f9</param>float</x-color><x-color><param>#ff79c6</param>)</x-color> processes
-<x-color><param>#61bfff</param>)</x-color>;
-
-
-<x-color><param>#bd93f9</param>int</x-color> ALL_PARTITION_COLUMN_SIZE = processes * <x-color><param>#8be9fd</param>COLUMN_PARTITION_SIZE</x-color>;
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+END_SRC
-
-</x-color></x-bg-color>
-
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
-Podział podzbioru w kolumnie realizowany jest poprzez użycie dwóch funkcji <x-color><param>#f1fa8c</param>~MPI_SCATTER~</x-color> oraz <x-color><param>#f1fa8c</param>~MPI_GATHER~</x-color> wraz z podanymi powyżej wartościami stałych. W kodzie programu występują trzy bloki z użyciem pary <x-color><param>#f1fa8c</param>~MPI_SCATTER~</x-color> i <x-color><param>#f1fa8c</param>~MPI_GATHER~</x-color>, które synchronizują procesy w obrębie bloku. \\
-
-
-<x-color><param>#8995ba</param>#+caption[Podział]:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>Podział kolekcji na podprocesy</x-color></x-bg-color>
-
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+begin_src c++ :eval no
-
-</x-color></x-bg-color><x-color><param>#8be9fd</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>std</x-color></x-bg-color></x-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param>::<x-color><param>#bd93f9</param>vector</x-color><x-color><param>#61bfff</param><<</x-color><x-color><param>#bd93f9</param>double</x-color><x-color><param>#61bfff</param>></x-color> <x-color><param>#50fa7b</param>R_partition</x-color><x-color><param>#61bfff</param>(</x-color><x-color><param>#8be9fd</param>COLUMN_PARTITION_SIZE</x-color><x-color><param>#61bfff</param>)</x-color>;
-MPI_Scatter<x-color><param>#61bfff</param>(</x-color>R.data<x-color><param>#ff79c6</param>()</x-color>, <x-color><param>#8be9fd</param>COLUMN_PARTITION_SIZE</x-color>, <x-color><param>#8be9fd</param>MPI_DOUBLE</x-color>,
-            R_partition.data<x-color><param>#ff79c6</param>()</x-color>, <x-color><param>#8be9fd</param>COLUMN_PARTITION_SIZE</x-color>, <x-color><param>#8be9fd</param>MPI_DOUBLE</x-color>,
-            <x-color><param>#bd93f9</param>0</x-color>, <x-color><param>#8be9fd</param>MPI_COMM_WORLD</x-color><x-color><param>#61bfff</param>)</x-color>;
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+end_src
-
-</x-color></x-bg-color>
-
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
-
+@@latex: \noindent @@
 Każdy proces realizuje eliminację elementów odstających dla swojej partycji, a następnie wyniki są łączone do jednego wektora.
 
+#+caption[Procesowanie kolekcji]: Realizacja algorytmu dla każdego podprocesu
+#+begin_src c++ :eval no
+auto R_partition_M = std::move(
+    remove_outliers(R_partition, MEAN_R, STD_R)
+);
+#+end_src
 
-<x-color><param>#8995ba</param>#+caption[Procesowanie kolekcji]:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>Realizacja algorytmu dla każdego podprocesu</x-color></x-bg-color>
-
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+begin_src c++ :eval no
-
-</x-color></x-bg-color><x-color><param>#ff79c6</param><x-bg-color><param>#282a36</param><x-color><param>light gray</param>auto</x-color></x-bg-color></x-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param> R_partition_M = <x-color><param>#8be9fd</param>std</x-color>::move<x-color><param>#61bfff</param>(</x-color>
-    remove_outliers<x-color><param>#ff79c6</param>(</x-color>R_partition, <x-color><param>#8be9fd</param>MEAN_R</x-color>, <x-color><param>#8be9fd</param>STD_R</x-color><x-color><param>#ff79c6</param>)</x-color>
-
-<x-color><param>#61bfff</param>)</x-color>;
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+end_src
-
-</x-color></x-bg-color>
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
-
+@@latex: \noindent @@
 Ten sam kod występuje dla wszystkich kolumn, gdzie jedyną różnicą są zmienne określające kolejne kolumny. \\
 
+#+caption[Akumulacja]: Zebranie danych podprocesu do procesu głównego
+#+begin_src c++ :eval no
+MPI_Gather(R_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+           R_new.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+           0, MPI_COMM_WORLD);
+#+END_SRC
 
-<x-color><param>#8995ba</param>#+caption[Akumulacja]:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>Zebranie danych podprocesu do procesu głównego</x-color></x-bg-color>
-<x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+begin_src c++ :eval no
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>light gray</param>MPI_Gather<x-color><param>#61bfff</param>(</x-color>R_partition_M.data<x-color><param>#ff79c6</param>()</x-color>, <x-color><param>#8be9fd</param>COLUMN_PARTITION_SIZE</x-color>, <x-color><param>#8be9fd</param>MPI_DOUBLE</x-color>,
-           R_new.data<x-color><param>#ff79c6</param>()</x-color>, <x-color><param>#8be9fd</param>COLUMN_PARTITION_SIZE</x-color>, <x-color><param>#8be9fd</param>MPI_DOUBLE</x-color>,
-           <x-color><param>#bd93f9</param>0</x-color>, <x-color><param>#8be9fd</param>MPI_COMM_WORLD</x-color><x-color><param>#61bfff</param>)</x-color>;
-</x-color></x-bg-color><x-bg-color><param>#282a36</param><x-color><param>LightSkyBlue</param>#+END_SRC
+@@latex: \noindent @@
+Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów dla środowiska *MPI*. \\
+#+caption: Statystyka dla 30 uruchomień, wartości w ms
+#+ATTR_LaTeX: :align |c|c|c|c|
+|---------+---------+------+------|
+| Mediana | Średnia | NKCW | NDCW |
+|---------+---------+------+------|
+|     605 |   616   |  585 |  816 |
+|---------+---------+------+------|
+- NKCW - najkrótszy czas wykonania
+- NDCW - najdłuższy czas wykonania
 
-</x-color></x-bg-color>
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
+@@latex: \noindent @@
+#+caption: [MPI] Pomiar dla wszystkich wariantów z skalą logatytmiczną
+[[./resources/all.png]]
 
-Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów dla środowiska <bold>*MPI*</bold>. \\
+#+caption: [MPI] Pomiar dla wszystkich wariantów bez skalowania
+[[./resources/all1.png]]
 
-<x-color><param>#8995ba</param>#+caption:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>Statystyka dla 30 uruchomień, wartości w ms</x-color></x-bg-color>
+** Zrównoleglenie programu za pomocą OpenOMP
 
-<x-color><param>#8995ba</param>#+ATTR_LaTeX: :align |c|c|c|c|</x-color>
-<x-color><param>#bd93f9</param>|---------+---------+------+------|</x-color>
-<x-color><param>#bd93f9</param>| Mediana | Średnia | NKCW | NDCW |</x-color>
-<x-color><param>#bd93f9</param>|---------+---------+------+------|</x-color>
-<x-color><param>#bd93f9</param>|<x-display><param>(disable-eval (space :relative-width 1))</param> </x-display>    605<x-display><param>(disable-eval (space :relative-width 1))</param> </x-display>|<x-display><param>(disable-eval (space :relative-width 1))</param> </x-display>  616<x-display><param>(disable-eval (space :relative-width 1))</param> </x-display>  |<x-display><param>(disable-eval (space :relative-width 1))</param> </x-display> 585<x-display><param>(disable-eval (space :relative-width 1))</param> </x-display>|<x-display><param>(disable-eval (space :relative-width 1))</param> </x-display> 816<x-display><param>(disable-eval (space :relative-width 1))</param> </x-display>|</x-color>
-<x-color><param>#bd93f9</param>|---------+---------+------+------|</x-color>
-
-<x-color><param>#bd93f9</param>-</x-color> NKCW - najkrótszy czas wykonania
-
-<x-color><param>#bd93f9</param>-</x-color> NDCW - najdłuższy czas wykonania
-
-
-@@latex: <x-bg-color><param>#282a36</param><x-color><param>light gray</param><x-color><param>LightGray</param>\noindent</x-color> </x-color></x-bg-color><x-color><param>#8be9fd</param>@@</x-color>
-
-<x-color><param>#8995ba</param>#+caption:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>[MPI] Pomiar dla wszystkich wariantów z skalą logatytmiczną</x-color></x-bg-color>
-
-[[<x-color><param>#ffb86c</param>./resources/all.png</x-color>]]
-
-
-<x-color><param>#8995ba</param>#+caption:</x-color> <x-bg-color><param>#282a36</param><x-color><param>light gray</param>[MPI] Pomiar dla wszystkich wariantów bez skalowania</x-color></x-bg-color>
-
-[[<x-color><param>#ffb86c</param>./resources/all1.png</x-color>]]
-
-
-<x-color><param>#1E2029</param>*</x-color><x-color><param>white</param>*</x-color><x-color><param>white</param> Zrównoleglenie programu za pomocą OpenOMP
-
-</x-color>
-
-<x-color><param>#1E2029</param>*</x-color><x-color><param>white</param>*</x-color><x-color><param>white</param> Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
-</x-color><x-color><param>white</param>*</x-color><x-color><param>white</param> Podsumowanie
-
-</x-color>
+** Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
+* Podsumowanie
