@@ -1,4 +1,4 @@
-\usepackage{ulem}\usepackage{ulem}\usepackage{ulem}#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMPI
+#+title: Zrównoleglenie wstępnego przetwarzania danych przy użyciu OpenMPI
 #+author: Karol Wójcik, Krzysztof Swałdek
 #+date: 2020-10-14, Wtorek
 
@@ -54,7 +54,7 @@
 Algorytm /eliminacji obserwacji odstających/ korzysta z reguły trzech sigm. Reguła ta stanowi, że:
 
 @@latex: \vspace{6mm} @@
-#+begin_fancyquote
+
 \noindent
 /*Dla zmiennej, która ma rozkład normalny bądź zbliżony do rozkładu normalnego* można wyznaczyć ile obserwacji znajduje się w pewnym zakresie mierzonym odchyleniem standardowym (od średniej)./
 
@@ -65,7 +65,6 @@ Algorytm /eliminacji obserwacji odstających/ korzysta z reguły trzech sigm. Re
 - /95,4% obserwacji znajduje się w zakresie pomiędzy +/- 2 odchylenia standardowe od średniej/
 - /99,7% obserwacji znajduje się w zakresie pomiędzy +/- 3 odchylenia standardowe od średniej/
 - /99,994% obserwacji znajduje się w zakresie pomiędzy +/- 4 odchylenia standardowe od średniej/
-#+end_fancyquote
 
 @@latex: \noindent @@
 Zważywszy na powyższe w projekcie przyjęliśmy za wartości odstające wszystkie te, które odbiegają od średniej o +/- 3 odchylenia standardowe. Wartości odstające nie są usuwane ze zbioru, by nie powodować dziur. Za wartości odstające przyjęliśmy wartość średnią ze zbioru. \\
@@ -73,7 +72,7 @@ Zważywszy na powyższe w projekcie przyjęliśmy za wartości odstające wszyst
 @@latex: \noindent @@
 Operacje odpowiadające za eliminację i podmianę wartości na średnią prezentują się następująco: \\
 
-#+ATTR_LATEX: :options 
+#+ATTR_LATEX: :options
 #+caption: Algorytm eliminacji obserwacji odstających
 #+BEGIN_SRC c++ -i :eval no
 for (auto x : xv) {
@@ -87,7 +86,6 @@ for (auto x : xv) {
 }
 #+END_SRC
 
-@@latex: \clearpage @@
 * Metoda wykonywania pomiaru
 Program dla każdego wariantu został uruchomiony trzydzieści razy na platformie uczelnianej do obliczeń rozproszonych w celu zapewnienia poprawności i statystycznej dokładności wykonywach pomiarów. Pomiary czasowe podawane są dla każdego wariantu w jednostce ~ms~ (milisekundy). Wykorzystywana bilbioteka do przeprowadzania pomiarów to ~<std::chrono>~. Poniżej zaprezentowano klasę wykonującą pomiary:
 
@@ -101,7 +99,6 @@ double get_time() {
 }
 #+END_SRC
 
-\clearpage
 * Opis zbióru danych
   @@latex: \noindent @@
   Dane pochodzą z archiwum [[https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation][uci]]. Zawierają próbki kolorów G, R, B z wycinków obrazków twarzy ludzi w tym:
@@ -127,7 +124,7 @@ double get_time() {
 
 * Pomiary
 ** Zrównoleglenie programu za pomocą OpenMPI
-Zbiór danych z pliku podanego jako wartość typu string odczytywane są trzy kolumny: ~R~, ~G~, ~B~. Następnie środowisko MPI jest inicjalizowane poprzez komendę ~MPI_INIT~ i pobrane zostają wartości odpowiadające za identyfikator procesu i liczbę dostępnych procesów. W kolejnym kroku algorytmu wyliczane zostają stałe ~COLUMN_SIZE~ oraz ~COLUMN_PARTITION_SIZE~, na których to podstawie występować będzie podział każdej z kolumny. \\
+Z pliku podanego jako wartość typu string odczytywane są trzy kolumny: ~R~, ~G~, ~B~. Następnie środowisko MPI jest inicjalizowane poprzez komendę ~MPI_INIT~ i pobrane zostają wartości odpowiadające za identyfikator procesu i liczbę dostępnych procesów. W kolejnym kroku algorytmu wyliczane zostają stałe ~COLUMN_SIZE~ oraz ~COLUMN_PARTITION_SIZE~, na których to podstawie występować będzie podział każdej z kolumny. \\
 
 #+caption: Wyliczenie liczebności partycji
 #+BEGIN_SRC c++ :eval no
@@ -144,9 +141,11 @@ Podział podzbioru w kolumnie realizowany jest poprzez użycie dwóch funkcji ~M
 #+caption[Podział]: Podział kolekcji na podprocesy
 #+begin_src c++ :eval no
 std::vector<double> R_partition(COLUMN_PARTITION_SIZE);
-MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
-            R_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
-            0, MPI_COMM_WORLD);
+MPI_Scatter(
+    R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+    R_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+    0, MPI_COMM_WORLD
+);
 #+end_src
 
 @@latex: \noindent @@
@@ -164,9 +163,11 @@ Ten sam kod występuje dla wszystkich kolumn, gdzie jedyną różnicą są zmie
 
 #+caption[Akumulacja]: Zebranie danych podprocesu do procesu głównego
 #+begin_src c++ :eval no
-MPI_Gather(R_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
-           R_new.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
-           0, MPI_COMM_WORLD);
+MPI_Gather(
+    R_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+    R_new.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+    0, MPI_COMM_WORLD
+);
 #+END_SRC
 
 @@latex: \noindent @@
@@ -195,7 +196,8 @@ Zbiór danych z pliku podanego jako wartość parametru wejściowego typu string
     return sum / xv.size()
 #+END_SRC
 
-Dalszym krokiem jest przejście do sedna algorytmu eliminacji obserwacji odstających, gdzie sama, operacja jest wykonywana równolegle przy wykorzystaniu ~#pragma omp parallel~, a dodatkowo jest dzielona na kolejne części za pomocą ~#pragma omp for~. Do podziału iteracji użyto dyrektywy ~schedule~, która ustala sposób rozdzielania iteracji pomiędzy wątki. Ustawiona została wartość ~runtime~, oznaczająca ustalanie liczebność każdego zbioru w czasie dzialania programu. Po wykonaniu się algorytmu, następuje sekcja krytyczna zwracająca wyniki.
+@@latex: \noindent @@
+Dalszym krokiem jest przejście do sedna algorytmu eliminacji obserwacji odstających, gdzie sama, operacja jest wykonywana równolegle przy wykorzystaniu ~#pragma omp parallel~, a dodatkowo jest dzielona na kolejne części za pomocą ~#pragma omp for~. Do podziału iteracji użyto dyrektywy ~schedule~, która ustala sposób rozdzielania iteracji pomiędzy wątki. Ustawiona została wartość ~runtime~, oznaczająca ustalanie liczebność każdego zbioru w czasie dzialania programu. Po wykonaniu się algorytmu, następuje sekcja krytyczna zwracająca wyniki. \\
 
 #+begin_src c++ :eval no
 #pragma omp parallel
@@ -232,31 +234,36 @@ Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów d
 - NDCW - najdłuższy czas wykonania
 
 
-** Zrównoleglenie programu w modelu hybrydowym; połączenie OpenMPI i OpenOMP
-
+** Zrównoleglenie programu w modelu hybrydowym
 Zrównoleglenie to będzie połączeniem obydwóch metod, *MPI* oraz *OpenOMP*. Zbiór danych z pliku podanego jako wartość parametru wejsciowego typu string, odczytywane są trzy kolumny: ~R~, ~G~, ~B~. Następnie obliczane sa średnie przy pomocy zrównoleglenia za pomocą *OpenOMP*.
 
 #+begin_src c++ :eval no
-    double sum = 0;
-    #pragma omp parallel for schedule(runtime)
-    for (auto x : xv) {
-        sum += x;
-    }
+double sum = 0;
 
-    return sum / xv.size()
+#pragma omp parallel for schedule(runtime)
+for (auto x : xv) {
+    sum += x;
+}
+
+return sum / xv.size()
 #+END_SRC
 
+@@latex: \noindent @@
 Dalszym krokiem jest inicjalizacja środowiska MPI w taki sam sposób, jak przy użyciu samego ~OpenMPI~. Później następuje podział zbioru danych na mniejsze podzbiory, który jest realizowany za pomoca funkcji ~MPI_SCATTER~ oraz ~MPI_GATHER~.
 
- #+begin_src c++ :eval no
- #pragma omp parallel
-     std::vector<double> R_partition(COLUMN_PARTITION_SIZE);
-             MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, R_partition.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE,
-                         0, MPI_COMM_WORLD);
+#+begin_src c++ :eval no
+#pragma omp parallel
+std::vector<double> R_partition(COLUMN_PARTITION_SIZE);
+
+MPI_Scatter(R.data(), COLUMN_PARTITION_SIZE,
+            MPI_DOUBLE, R_partition.data(),
+            COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+            0, MPI_COMM_WORLD);
  #+END_SRC
 
 
- Wewnątrz jednego podzbioru użyty został jeszcze *OpenOMP*.
+@@latex: \noindent @@
+Wewnątrz jednego podzbioru użyty został jeszcze *OpenOMP*. \\
 
 #+begin_src c++ :eval no
 #pragma omp parallel
@@ -275,18 +282,26 @@ Dalszym krokiem jest inicjalizacja środowiska MPI w taki sam sposób, jak przy 
         }
 
         #pragma omp critical
-        nxv.insert(nxv.end(), nxv_private.begin(), nxv_private.end());
+        nxv.insert(
+            nxv.end(),
+            nxv_private.begin(),
+            nxv_private.end()
+        );
     }
 #+END_SRC
 
 
+@@latex: \noindent @@
 Na końcu zostaja zebrane dane z podprocesów do procesu głównego.
 
 #+begin_src c++ :eval no
-MPI_Gather(R_partition_M.data(), COLUMN_PARTITION_SIZE, MPI_DOUBLE, R_new.data(), COLUMN_PARTITION_SIZE,
-                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Gather(
+    R_partition_M.data(), COLUMN_PARTITION_SIZE,
+    MPI_DOUBLE, R_new.data(),
+    COLUMN_PARTITION_SIZE, MPI_DOUBLE,
+    0, MPI_COMM_WORLD
+);
 #+END_SRC
-
 
 @@latex: \noindent @@
 Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów dla podejścia hybrydowego. \\
@@ -317,19 +332,13 @@ Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów d
 - NKCW - najkrótszy czas wykonania
 - NDCW - najdłuższy czas wykonania
 
-
-**** Wykresy przedstawiające czas wykonania od numeru uruchomienia
-
-@@latex: \noindent @@
+#+attr_latex: :width 0.8\textwidth
 #+caption: [MPI] Pomiar dla wszystkich wariantów bez skalowania
 [[./resources/all1.png]]
 
+#+attr_latex: :width 0.8\textwidth
 #+caption: [MPI] Pomiar dla wszystkich wariantów z skalą logatytmiczną
 [[./resources/all.png]]
 
-
-
-
 * Podsumowanie
-
-Najmniej skuteczną metoda przyspieszania obliczeń okazało sie środowisko *OpenOMP*. Zapewnia ono stosunkowo jedno z najprostszych metod zrównoleglania, gdzie na etapie projektowania programu nie trzeba mysleć o prarelizacji. Kolejne miejsce zajął *OpenMPI*, które nestety cechuje się znacznym nakładem pracy przy zrównoleglaniu, lecz efekty są dużo lepsze w porównaniu do poprzedniego środowiska. Hybrydowe podejście okazało sie być najlepsze. Pozwala ono wykorzystać mocne strony każdego ze środowisk, przez co daje najlepsze wyniki.
+Najmniej skuteczną metoda przyspieszania obliczeń okazało sie środowisko *OpenOMP*. Zapewnia ono stosunkowo jedno z najprostszych metod zrównoleglania, gdzie na etapie projektowania programu nie trzeba mysleć o prarelizacji. Kolejne miejsce zajął *OpenMPI*, które nestety cechuje się znacznym nakładem pracy przy zrównoleglaniu, lecz efekty są dużo lepsze w porównaniu do poprzedniego środowiska. Hybrydowe jest w tym wypadku najoptymalniejszą wersją programu. Podejście hybrydowe pozwala wykorzystać mocne strony każdego ze środowisk, co przekłada się na korzystny wynik czasowy.
