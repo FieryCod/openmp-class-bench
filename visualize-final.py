@@ -5,7 +5,7 @@ mpi = [3481, 1834,1167, 1218]
 omp = [64267, 31437,20941, 21731]
 hyb = [1747, 834,673, 705]
 
-x = [2, 4, 6, 8]
+x = ['2', '4', '6', '8']
 
 plt.ylabel("Czas wykonania log(ms)")
 plt.xlabel("Ilość procesów")
