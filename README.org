@@ -346,5 +346,30 @@ Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów d
 #+caption: [MPI] Pomiar dla wszystkich wariantów z skalą logatytmiczną
 [[./resources/all.png]]
 
+#+attr_latex: :width 0.8\textwidth
+#+caption: [MPI] Pomiar dla wszystkich wariantów bez skalowania
+[[./resources/cw.png]]
+
+#+attr_latex: :width 0.8\textwidth
+#+caption: [MPI] Pomiar dla wszystkich wariantów z skalą logatytmiczną
+[[./resources/cwlog.png]]
+
+#+attr_latex: :width 0.8\textwidth
+#+caption: [MPI] Przyspiesznie dla wszystkich wariantów bez skalowania
+[[./resources/p.png]]
+
+#+attr_latex: :width 0.8\textwidth
+#+caption: [MPI] Przyspiesznie dla wszystkich wariantów z skalą logatytmiczną
+[[./resources/plog.png]]
+
+#+attr_latex: :width 0.8\textwidth
+#+caption: [MPI] Pomiar dla najlepszych wyników bez skalowania
+[[./resources/cwBest.png]]
+
+#+attr_latex: :width 0.8\textwidth
+#+caption: [MPI] Przyspieszenie dla najlepszych wynikow z skalą logatytmiczną
+[[./resources/pBest.png]]
+
+
 * Podsumowanie
 Najmniej skuteczną metoda przyspieszania obliczeń okazało sie środowisko *OpenOMP*. Zapewnia ono stosunkowo jedno z najprostszych metod zrównoleglania, gdzie na etapie projektowania programu nie trzeba mysleć o prarelizacji. Kolejne miejsce zajął *OpenMPI*, które nestety cechuje się znacznym nakładem pracy przy zrównoleglaniu, lecz efekty są dużo lepsze w porównaniu do poprzedniego środowiska. Hybrydowe jest w tym wypadku najoptymalniejszą wersją programu. Podejście hybrydowe pozwala wykorzystać mocne strony każdego ze środowisk, co przekłada się na korzystny wynik czasowy.
