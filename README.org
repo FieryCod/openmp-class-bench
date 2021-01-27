@@ -87,7 +87,10 @@ for (auto x : xv) {
 #+END_SRC
 
 * Metoda wykonywania pomiaru
-Program dla każdego wariantu został uruchomiony trzydzieści razy na platformie uczelnianej do obliczeń rozproszonych w celu zapewnienia poprawności i statystycznej dokładności wykonywach pomiarów. Pomiary czasowe podawane są dla każdego wariantu w jednostce ~ms~ (milisekundy). Wykorzystywana bilbioteka do przeprowadzania pomiarów to ~<std::chrono>~. Poniżej zaprezentowano klasę wykonującą pomiary:
+Program dla każdego wariantu został uruchomiony trzydzieści razy na platformie uczelnianej do obliczeń rozproszonych w celu zapewnienia poprawności i statystycznej dokładności wykonywach pomiarów. Pomiary czasowe podawane są dla każdego wariantu w jednostce ~ms~ (milisekundy). Wykorzystywana bilbioteka do przeprowadzania pomiarów to ~<std::chrono>~.
+
+@@latex: \vspace{3mm} \noindent@@
+Poniżej zaprezentowano klasę wykonującą pomiary:
 
 #+caption: Funkcja pobierająca aktualny czas w milisekundach
 #+BEGIN_SRC c++ :eval no
@@ -170,8 +173,9 @@ MPI_Gather(
 );
 #+END_SRC
 
-@@latex: \noindent @@
+@@latex: \vspace{3mm} \noindent@@
 Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów dla środowiska *MPI*. \\
+
 #+caption: Statystyka dla 30 uruchomień, wartości w ms
 #+ATTR_LaTeX: :align |c|c|c|c|
 |---------+---------+------+------|
@@ -197,7 +201,7 @@ Zbiór danych z pliku podanego jako wartość parametru wejściowego typu string
     return sum / xv.size()
 #+END_SRC
 
-@@latex: \noindent @@
+@@latex: \vspace{3mm} \noindent @@
 Dalszym krokiem jest przejście do sedna algorytmu eliminacji obserwacji odstających, gdzie sama, operacja jest wykonywana równolegle przy wykorzystaniu ~#pragma omp parallel~, a dodatkowo jest dzielona na kolejne części za pomocą ~#pragma omp for~. Do podziału iteracji użyto dyrektywy ~schedule~, która ustala sposób rozdzielania iteracji pomiędzy wątki. Ustawiona została wartość ~runtime~, oznaczająca ustalanie liczebność każdego zbioru w czasie dzialania programu. Po wykonaniu się algorytmu, następuje sekcja krytyczna zwracająca wyniki. \\
 
 #+caption: Uruchomienie zadania eliminacji obserwacji odstających w osobnym wątku oraz podział na kolejne wątki
@@ -222,9 +226,9 @@ Dalszym krokiem jest przejście do sedna algorytmu eliminacji obserwacji odstaj�
     }
 #+END_SRC
 
-
-@@latex: \noindent @@
+@@latex: \vspace{3mm} \noindent@@
 Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów dla środowiska *OpenOMP*. \\
+
 #+caption: Statystyka dla 30 uruchomień, wartości w ms
 #+ATTR_LaTeX: :align |c|c|c|c|
 |---------+---------+------+------|
@@ -251,7 +255,7 @@ for (auto x : xv) {
 return sum / xv.size()
 #+END_SRC
 
-@@latex: \noindent @@
+@@latex: \vspace{3mm} \noindent @@
 Dalszym krokiem jest inicjalizacja środowiska MPI w taki sam sposób, jak przy użyciu samego ~OpenMPI~. Później następuje podział zbioru danych na mniejsze podzbiory, który jest realizowany za pomoca funkcji ~MPI_SCATTER~ oraz ~MPI_GATHER~.
 
 #+caption: Podział na podprocesy
@@ -309,8 +313,9 @@ MPI_Gather(
 );
 #+END_SRC
 
-@@latex: \noindent @@
+@@latex: \vspace{3mm} \noindent@@
 Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów dla podejścia hybrydowego. \\
+
 #+caption: Statystyka dla 30 uruchomień, wartości w ms
 #+ATTR_LaTeX: :align |c|c|c|c|
 |---------+---------+------+------|
@@ -321,9 +326,7 @@ Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów d
 - NKCW - najkrótszy czas wykonania
 - NDCW - najdłuższy czas wykonania
 
-
 ** Podsumowanie pomiarów
-
 #+caption: Statystyka dla 30 uruchomień, wartości w ms
 #+ATTR_LaTeX: :align |c|c|c|c|c|
 |------------+---------+---------+------+------|
@@ -370,6 +373,6 @@ Poniżej przedstawiono statystykę wydajności w postaci tabel oraz wykresów d
 #+caption: [MPI] Przyspieszenie dla najlepszych wynikow z skalą logatytmiczną
 [[./resources/pBest.png]]
 
-
+@@latex: \clearpage @@
 * Podsumowanie
 Najmniej skuteczną metoda przyspieszania obliczeń okazało sie środowisko *OpenOMP*. Zapewnia ono stosunkowo jedno z najprostszych metod zrównoleglania, gdzie na etapie projektowania programu nie trzeba mysleć o prarelizacji. Kolejne miejsce zajął *OpenMPI*, które nestety cechuje się znacznym nakładem pracy przy zrównoleglaniu, lecz efekty są dużo lepsze w porównaniu do poprzedniego środowiska. Hybrydowe jest w tym wypadku najoptymalniejszą wersją programu. Podejście hybrydowe pozwala wykorzystać mocne strony każdego ze środowisk, co przekłada się na korzystny wynik czasowy.
